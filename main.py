@@ -1,7 +1,7 @@
 import sys
 
 from qtpy.QtCore import QSize, QSettings
-from qtpy.QtGui import QIcon
+from qtpy.QtGui import QIcon, QCloseEvent
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, QRadioButton
 import qtawesome as qta
 import qdarktheme as qtd
@@ -19,6 +19,14 @@ class MainWindow(QMainWindow):
 
         # Settings Manager
         self.settings = QSettings("meowmeowahr", "KevinbotDesktopClient", self)
+
+        # Remembered position
+        if self.settings.contains("window/x"):
+            # noinspection PyTypeChecker
+            self.setGeometry(self.settings.value("window/x", type=int),
+                             self.settings.value("window/y", type=int),
+                             self.settings.value("window/width", type=int),
+                             self.settings.value("window/height", type=int))
 
         # Theme
         theme = self.settings.value("window/theme", "dark")
@@ -102,6 +110,13 @@ class MainWindow(QMainWindow):
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.settings.setValue("window/x", self.geometry().x())
+        self.settings.setValue("window/y", self.geometry().y())
+        self.settings.setValue("window/width", self.geometry().width())
+        self.settings.setValue("window/height", self.geometry().height())
+        event.accept()
 
 
 if __name__ == "__main__":

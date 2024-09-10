@@ -48,8 +48,9 @@ class MainWindow(QMainWindow):
             ["Controllers", qta.icon("mdi6.microsoft-xbox-controller")],
             ["Debug", qta.icon("mdi6.bug")],
             ["Settings", qta.icon("mdi6.cog")],
+            ["About", qta.icon("mdi6.information-slab-circle")],
         ]
-        self.main, self.controller, self.debug, self.settings_widget = add_tabs(self.tabs, tabs)
+        self.main, self.controller, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
 
         self.settings_widget.setLayout(self.settings_layout(self.settings))
 

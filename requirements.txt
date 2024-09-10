@@ -1,0 +1,3 @@
+QtPy~=2.4.1
+pyglet~=2.0.17
+qtawesome~=1.3.1

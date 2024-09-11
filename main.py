@@ -8,7 +8,7 @@ from loguru import logger
 from qtpy.QtCore import QSize, QSettings, qVersion, Qt, QTimer
 from qtpy.QtGui import QIcon, QCloseEvent
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton, QSplitter, QTextEdit
+    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog
 
 import ansi2html
 
@@ -125,10 +125,29 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(splitter)
 
+        logger_widget = QWidget()
+        splitter.addWidget(logger_widget)
+
+        logger_layout = QVBoxLayout()
+        logger_widget.setLayout(logger_layout)
+
+        logger_top_bar = QHBoxLayout()
+        logger_layout.addLayout(logger_top_bar)
+
+        logger_clear = QPushButton("Clear")
+        logger_clear.setIcon(qta.icon("mdi6.notification-clear-all"))
+        logger_top_bar.addWidget(logger_clear)
+
+        logger_export = QPushButton("Export")
+        logger_export.setIcon(qta.icon("mdi6.export"))
+        logger_top_bar.addWidget(logger_export)
+
         logger_area = QTextEdit()
         logger_area.setReadOnly(True)
         logger_area.setStyleSheet("background-color: black;")
-        splitter.addWidget(logger_area)
+        logger_clear.clicked.connect(logger_area.clear)
+        logger_export.clicked.connect(lambda: self.export_logs(logger_area))
+        logger_layout.addWidget(logger_area)
 
         self.logger_timer.setInterval(250)
         self.logger_timer.timeout.connect(lambda: self.update_logs(logger_area))
@@ -136,9 +155,23 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    def update_logs(self, log_area: QTextEdit):
-        for _ in range(log_queue.qsize()):
-            log_area.append(log_converter.convert(log_queue.get().strip()))
+    @staticmethod
+    def update_logs(log_area: QTextEdit):
+        for _ in range(dc_log_queue.qsize()):
+            log_area.append(log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + dc_log_queue.get().strip()))
+
+    def export_logs(self, log_area: QTextEdit):
+        name = QFileDialog.getSaveFileName(self,
+                                           'Export Logs',
+                                           filter="Plain Text (*.txt);;Colored HTML Document (*.html);;Markdown (*.md)")
+        with open(name[0], "w") as file:
+            if name[1] == "Colored HTML Document (*.html)":
+                file.write(log_area.toHtml())
+            elif name[1] == "Markdown (*.md)":
+                file.write(log_area.toMarkdown())
+            else:
+                file.write(log_area.toPlainText())
+
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
@@ -152,11 +185,11 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    log_queue = queue.Queue()
+    # Log queue and ansi2html converter
+    dc_log_queue = queue.Queue()
     log_converter = ansi2html.Ansi2HTMLConverter()
     log_converter.scheme = "osx"
-
-    logger.add(log_queue.put, colorize=True)
+    logger.add(dc_log_queue.put, colorize=True)
 
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")

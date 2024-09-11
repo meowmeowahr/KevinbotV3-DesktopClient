@@ -1,13 +1,15 @@
 import queue
 import sys
 import platform
+import threading
+from typing import Tuple
 
 import qdarktheme as qtd
 import qtawesome as qta
 from loguru import logger
-from qtpy.QtCore import QSize, QSettings, qVersion, Qt, QTimer
-from qtpy.QtGui import QIcon, QCloseEvent
-from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
+from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer
+from PySide6.QtGui import QIcon, QCloseEvent
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox
 
 import ansi2html
@@ -76,12 +78,12 @@ class MainWindow(QMainWindow):
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
         self.root_layout.addWidget(self.tabs)
 
-        tabs: list[list[str | QIcon]] = [
-            ["Main", qta.icon("mdi6.hub")],
-            ["Connections", qta.icon("mdi6.transit-connection-variant")],
-            ["Debug", qta.icon("mdi6.bug")],
-            ["Settings", qta.icon("mdi6.cog")],
-            ["About", qta.icon("mdi6.information-slab-circle")],
+        tabs: list[Tuple[str, QIcon]] = [
+            ("Main", qta.icon("mdi6.hub")),
+            ("Connections", qta.icon("mdi6.transit-connection-variant")),
+            ("Debug", qta.icon("mdi6.bug")),
+            ("Settings", qta.icon("mdi6.cog")),
+            ("About", qta.icon("mdi6.information-slab-circle")),
         ]
         self.main, self.connection_widget, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
 
@@ -229,7 +231,6 @@ class MainWindow(QMainWindow):
 
         # QSettings getters
         port_combo.addItems(self.xbee.get_available_ports())
-        print(self.xbee.get_available_ports())
         if settings.value("comm/port", "COM3") in self.xbee.get_available_ports():
             port_combo.setCurrentText(settings.value("comm/port", "COM3")) # type: ignore
         baud_combo.setCurrentText(str(settings.value("comm/baud", 230400, type=int)))
@@ -275,6 +276,12 @@ class MainWindow(QMainWindow):
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
 
+def controller_backend():
+    try:
+        begin_controller_backend()
+    except RuntimeError as e:
+        logger.error(f"Error in controller backend: {repr(e)}")
+        controller_backend()
 
 if __name__ == "__main__":
     # Log queue and ansi2html converter
@@ -288,7 +295,7 @@ if __name__ == "__main__":
     logger.info(f"Using Python: {platform.python_version()}")
     logger.info(f"Kevinbot Desktop Client: {__version__}")
 
-    begin_controller_backend()
+    threading.Thread(target=controller_backend, daemon=True).start()
     logger.debug("Pyglet backend started in thread")
 
     app = QApplication(sys.argv)

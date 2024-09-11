@@ -1,6 +1,6 @@
-from qtpy.QtWidgets import QFrame, QLabel, QHBoxLayout
-from qtpy.QtGui import QMouseEvent
-from qtpy.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout
+from PySide6.QtGui import QMouseEvent
+from PySide6.QtCore import Qt
 from enum import Enum
 
 class Severity(Enum):
@@ -35,6 +35,7 @@ class WarningBar(QFrame):
 
         self.setFixedHeight(self.minimumSizeHint().height())
 
-    def mousePressEvent(self, ev: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent):
         if self.closeable:
             self.setVisible(False)
+        event.accept()

@@ -1,4 +1,4 @@
-from qtpy.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal
 import serial
 import serial.tools.list_ports
 import serial.tools.list_ports_linux

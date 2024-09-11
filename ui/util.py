@@ -1,8 +1,8 @@
-from collections.abc import Callable
+from typing import Tuple
 
-from qtpy.QtGui import QIcon, QTransform
-from qtpy.QtWidgets import QWidget, QTabWidget
-from qtpy.QtCore import Qt
+from PySide6.QtGui import QIcon, QTransform
+from PySide6.QtWidgets import QWidget, QTabWidget
+from PySide6.QtCore import Qt
 
 def rotate_icon(icon: QIcon, angle: float) -> QIcon:
     # Convert QIcon to QPixmap
@@ -14,7 +14,7 @@ def rotate_icon(icon: QIcon, angle: float) -> QIcon:
     # Convert back to QIcon
     return QIcon(rotated_pixmap)
 
-def add_tabs(bar: QTabWidget, tabs: list[list[str | QIcon]]) -> list[QWidget | Callable]:
+def add_tabs(bar: QTabWidget, tabs: list[Tuple[str, QIcon]]) -> list[QWidget]:
 
     widgets = []
     for tab_options in tabs:

@@ -1,19 +1,19 @@
 """
 Controller interface for Kevinbot v3 Desktop Client
-Uses a pyglet backend and qtpy for frontend
+Uses a pyglet backend and PySide6 for frontend
 """
 
 import sys
 import typing
-import threading
 import uuid
 
-from qtpy.QtWidgets import (QApplication, QWidget, QPushButton, QListWidget,
+from PySide6.QtWidgets import (QApplication, QWidget, QPushButton, QListWidget,
                             QHBoxLayout, QVBoxLayout, QListWidgetItem)
-from qtpy.QtCore import Qt, QTimer, Signal
-from qtpy.QtGui import QFont, QRgba64, QColor
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont, QRgba64, QColor
 
-import pyglet # Controller backend
+import pyglet
+from pyglet.input.base import Controller # Controller backend
 
 from ui.delegates import NoFocusDelegate
 from .uuid_manager import UuidManager
@@ -21,10 +21,10 @@ from .uuid_manager import UuidManager
 
 def begin_controller_backend():
     """
-    Spin up the pyglet backend for detecting controllers
+    Blocking loop - pyglet backend for detecting controllers
     :return:
     """
-    return threading.Thread(target=pyglet.app.run, daemon=True).start()
+    return pyglet.app.run()
 
 
 def map_press(controller: pyglet.input.Controller, action: typing.Callable):
@@ -35,9 +35,9 @@ def map_press(controller: pyglet.input.Controller, action: typing.Callable):
     :return:
     """
     previous_mapping = controller.on_button_press
-    def handler(c: pyglet.input.Controller, button):
-        previous_mapping(c, button)
-        action(c, button)
+    def handler(controller: pyglet.input.Controller, button: str):
+        previous_mapping(controller, button)
+        action(controller, button)
 
     controller.on_button_press = handler
 
@@ -58,13 +58,14 @@ class ControllerManagerWidget(QWidget):
         self.controller_store = UuidManager()
 
         # Layout
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
+        self.root_layout = QHBoxLayout()
+        self.root_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.root_layout)
 
         # Connected Controllers List
         self.controller_source_layout = QVBoxLayout()
         self.controller_source_layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.addLayout(self.controller_source_layout)
+        self.root_layout.addLayout(self.controller_source_layout)
 
         self.refresh_button = QPushButton("Refresh Controllers")
         self.refresh_button.clicked.connect(self.refresh_controllers)
@@ -96,24 +97,28 @@ class ControllerManagerWidget(QWidget):
             controller.on_button_release = self.controller_release
             self.connected_list.addItem(item)
 
-    def controller_press(self, controller, _):
+    def controller_press(self, controller: pyglet.input.Controller, _) -> Controller:
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
             if controller == self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)):
                 item.setBackground(QColor(QRgba64().fromRgba(76, 175, 80,127)))
+        return controller
 
-    def controller_release(self, controller, _):
+    def controller_release(self, controller: pyglet.input.Controller, _) -> Controller:
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
             if controller == self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)):
                 item.setBackground(Qt.GlobalColor.transparent)
+        return controller
 
     def controller_disconnect(self, controller: pyglet.input.Controller):
         self.controllers.remove(controller)
         self.on_disconnected.emit(controller)
+        return controller
 
 
     def controller_reconnect(self, controller: pyglet.input.Controller):
         self.controllers.append(controller)
         self.on_connected.emit(controller)
+        return controller
 
     def get_controller_ids(self) -> list[uuid.UUID]:
         ids = []

@@ -63,7 +63,7 @@ class MainWindow(QMainWindow):
 
         tabs: list[list[str | QIcon]] = [
             ["Main", qta.icon("mdi6.hub")],
-            ["Controllers", qta.icon("mdi6.microsoft-xbox-controller")],
+            ["Connections", qta.icon("mdi6.transit-connection-variant")],
             ["Debug", qta.icon("mdi6.bug")],
             ["Settings", qta.icon("mdi6.cog")],
             ["About", qta.icon("mdi6.information-slab-circle")],
@@ -83,7 +83,6 @@ class MainWindow(QMainWindow):
 
         theme_widget = QWidget()
         toolbox.addItem(theme_widget, "Theme and Appearance")
-
 
         theme_layout = QVBoxLayout()
         theme_widget.setLayout(theme_layout)
@@ -119,7 +118,7 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    def debug_layout(self, settings: QSettings):
+    def debug_layout(self, _: QSettings):
         layout = QHBoxLayout()
 
         splitter = QSplitter(Qt.Orientation.Horizontal)

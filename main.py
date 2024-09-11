@@ -229,6 +229,12 @@ class MainWindow(QMainWindow):
         api_mode_combo.addItem("API Unescaped")
         comm_options_layout.addWidget(api_mode_combo, 3, 1)
 
+        # Option setters
+        port_combo.currentTextChanged.connect(lambda val: self.xbee.set_port(val))
+        baud_combo.currentTextChanged.connect(lambda val: self.xbee.set_baud(int(val)))
+        flow_check.stateChanged.connect(lambda val: self.xbee.set_flow_control(val))
+        api_mode_combo.currentTextChanged.connect(lambda val: self.xbee.set_api_escaped(val == "API Escaped"))
+
         # QSettings getters
         port_combo.addItems(self.xbee.get_available_ports())
         if settings.value("comm/port", "COM3") in self.xbee.get_available_ports():
@@ -242,7 +248,6 @@ class MainWindow(QMainWindow):
         baud_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/baud", int(val)))
         flow_check.stateChanged.connect(lambda val: settings.setValue("comm/fc", val == 2))
         api_mode_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/escaped", val == "API Escaped"))
-
 
         return layout
 

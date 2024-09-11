@@ -16,7 +16,7 @@ from qtpy.QtGui import QFont, QRgba64, QColor
 import pyglet # Controller backend
 
 from ui.delegates import NoFocusDelegate
-from uuid_manager import UuidManager
+from .uuid_manager import UuidManager
 
 
 def begin_controller_backend():

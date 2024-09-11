@@ -1,15 +1,20 @@
+import queue
 import sys
+import platform
 
-from qtpy.QtCore import QSize, QSettings
-from qtpy.QtGui import QIcon, QCloseEvent
-from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, QRadioButton
-import qtawesome as qta
 import qdarktheme as qtd
+import qtawesome as qta
+from loguru import logger
+from qtpy.QtCore import QSize, QSettings, qVersion
+from qtpy.QtGui import QIcon, QCloseEvent
+from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
+    QRadioButton
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar
+from components import controllers
 
-__version__ = "v0.0.0"
+__version__ = "0.0.0"
 
 
 class MainWindow(QMainWindow):
@@ -120,6 +125,15 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    log_queue = queue.Queue()
+
+    logger.add(log_queue.put)
+
+    logger.info(f"Using Qt: {qVersion()}")
+    logger.info(f"Using pyglet: {controllers.pyglet.version}")
+    logger.info(f"Using Python: {platform.python_version()}")
+    logger.info(f"Kevinbot Desktop Client: {__version__}")
+
     app = QApplication(sys.argv)
     app.setApplicationVersion(__version__)
     app.setApplicationName("Kevinbot Desktop Client")

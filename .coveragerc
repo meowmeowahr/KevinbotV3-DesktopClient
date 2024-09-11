@@ -1,0 +1,10 @@
+[run]
+omit =
+    */shibokensupport/*
+    */PySide6/*
+    */PyQt6/*
+    signature_bootstrap.py
+
+[report]
+exclude_lines =
+    pragma: no cover

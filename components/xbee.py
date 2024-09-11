@@ -1,0 +1,85 @@
+from qtpy.QtCore import QObject, Signal
+import serial
+import serial.tools.list_ports
+import serial.tools.list_ports_linux
+from xbee import XBee
+
+
+class XBeeManager(QObject):
+    # Define signals
+    on_data = Signal(dict)
+    on_error = Signal(str)
+    on_open = Signal()
+    on_close = Signal()
+
+    def __init__(self, port=None, baud=9600, flow_control=False, api_escaped=False):
+        super().__init__()
+        self.port = port
+        self.baud = baud
+        self.flow_control = flow_control
+        self.api_escaped = api_escaped
+        self.serial = None
+        self.xbee = None
+
+    def get_available_ports(self) -> list[str]:
+        """Return a list of available serial ports."""
+        port_strs = []
+        for port in serial.tools.list_ports.comports():
+            port_strs.append(port.device)
+        return port_strs
+
+
+    def open(self):
+        """Open the serial port and initialize the XBee connection."""
+        try:
+            # Open the serial connection
+            self.serial = serial.Serial(
+                port=self.port,
+                baudrate=self.baud,
+                rtscts=self.flow_control,
+                timeout=1
+            )
+
+            # Initialize XBee with API mode (escaped/unescaped)
+            self.xbee = XBee(self.serial, escaped=self.api_escaped, callback=self._handle_packet)
+
+            # Emit the on_open signal
+            self.on_open.emit()
+
+        except serial.SerialException as e:
+            self.on_error.emit(f"Serial error: {str(e)}")
+
+    def close(self):
+        """Close the XBee and serial connection."""
+        if self.xbee:
+            self.xbee.halt()  # Stop the XBee processing
+            self.xbee = None
+        if self.serial and self.serial.is_open:
+            self.serial.close()
+            self.serial = None
+        # Emit the on_close signal
+        self.on_close.emit()
+
+    def set_port(self, port):
+        """Set the serial port."""
+        self.port = port
+
+    def set_baud(self, baud):
+        """Set the baud rate."""
+        self.baud = baud
+
+    def set_flow_control(self, flow_control):
+        """Set the flow control (RTS/CTS)."""
+        self.flow_control = flow_control
+
+    def set_api_escaped(self, escaped):
+        """Set API mode (escaped/unescaped)."""
+        self.api_escaped = escaped
+
+    def _handle_packet(self, packet):
+        """Handle incoming packets from the XBee."""
+        try:
+            # Emit the full packet through on_data
+            self.on_data.emit(packet)
+        except Exception as e:
+            self.on_error.emit(f"Error handling packet: {str(e)}")

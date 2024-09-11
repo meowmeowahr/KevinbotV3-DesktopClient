@@ -8,13 +8,16 @@ from loguru import logger
 from qtpy.QtCore import QSize, QSettings, qVersion, Qt, QTimer
 from qtpy.QtGui import QIcon, QCloseEvent
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog
+    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox
 
 import ansi2html
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar
 from components import controllers, ControllerManagerWidget, begin_controller_backend
+from components.xbee import XBeeManager
+
+import constants
 
 __version__ = "0.0.0"
 
@@ -30,10 +33,10 @@ class MainWindow(QMainWindow):
         # Remembered position
         if self.settings.contains("window/x"):
             # noinspection PyTypeChecker
-            self.setGeometry(self.settings.value("window/x", type=int),
-                             self.settings.value("window/y", type=int),
-                             self.settings.value("window/width", type=int),
-                             self.settings.value("window/height", type=int))
+            self.setGeometry(self.settings.value("window/x", type=int), # type: ignore
+                             self.settings.value("window/y", type=int), # type: ignore
+                             self.settings.value("window/width", type=int), # type: ignore
+                             self.settings.value("window/height", type=int)) # type: ignore
 
         # Theme
         theme = self.settings.value("window/theme", "dark")
@@ -58,6 +61,14 @@ class MainWindow(QMainWindow):
 
         # Controller
         self.controller_manager = ControllerManagerWidget(slots=1)
+
+        # Communications
+        self.xbee = XBeeManager(
+            self.settings.value("comm/port", ""),
+            self.settings.value("comm/baud", 921600, type=int), # type: ignore
+            self.settings.value("comm/fc", False, type=bool), # type: ignore
+            self.settings.value("comm/escaped", False, type=bool), # type: ignore
+        )
 
         # Tabs
         self.tabs = QTabWidget()
@@ -159,13 +170,13 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    def connection_layout(self, _: QSettings):
+    def connection_layout(self, settings: QSettings):
         layout = QHBoxLayout()
 
         splitter = QSplitter()
         layout.addWidget(splitter)
 
-
+        # Controller
         controller_widget = QWidget()
         splitter.addWidget(controller_widget)
 
@@ -177,6 +188,60 @@ class MainWindow(QMainWindow):
         controller_layout.addWidget(controller_help)
 
         controller_layout.addWidget(self.controller_manager)
+
+        # Comm
+        comm_widget = QWidget()
+        splitter.addWidget(comm_widget)
+
+        comm_layout = QVBoxLayout()
+        comm_widget.setLayout(comm_layout)
+
+        # Port, baud rate, flow control, escaped config grid layout
+        comm_options_layout = QGridLayout()
+        comm_layout.addLayout(comm_options_layout)
+
+        port_label = QLabel("Port")
+        comm_options_layout.addWidget(port_label, 0, 0)
+
+        baud_label = QLabel("Baud")
+        comm_options_layout.addWidget(baud_label, 1, 0)
+
+        flow_label = QLabel("Flow Control")
+        comm_options_layout.addWidget(flow_label, 2, 0)
+
+        api_label = QLabel("API Mode")
+        comm_options_layout.addWidget(api_label, 3, 0)
+
+        port_combo = QComboBox()
+        comm_options_layout.addWidget(port_combo, 0, 1)
+
+        baud_combo = QComboBox()
+        baud_combo.addItems(list(map(str, constants.BAUD_RATES)))
+        comm_options_layout.addWidget(baud_combo, 1, 1)
+
+        flow_check = QCheckBox("Enable")
+        comm_options_layout.addWidget(flow_check, 2, 1)
+
+        api_mode_combo = QComboBox()
+        api_mode_combo.addItem("API Escaped")
+        api_mode_combo.addItem("API Unescaped")
+        comm_options_layout.addWidget(api_mode_combo, 3, 1)
+
+        # QSettings getters
+        port_combo.addItems(self.xbee.get_available_ports())
+        print(self.xbee.get_available_ports())
+        if settings.value("comm/port", "COM3") in self.xbee.get_available_ports():
+            port_combo.setCurrentText(settings.value("comm/port", "COM3")) # type: ignore
+        baud_combo.setCurrentText(str(settings.value("comm/baud", 230400, type=int)))
+        flow_check.setChecked(settings.value("comm/fc", False, type=bool)) # type: ignore
+        api_mode_combo.setCurrentText(settings.value("comm/escaped", False, type=bool) and "API Escaped" or "API Unescaped") # type: ignore
+
+        # QSettings setters
+        port_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/port", val))
+        baud_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/baud", int(val)))
+        flow_check.stateChanged.connect(lambda val: settings.setValue("comm/fc", val == 2))
+        api_mode_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/escaped", val == "API Escaped"))
+
 
         return layout
 
@@ -230,5 +295,5 @@ if __name__ == "__main__":
     app.setApplicationVersion(__version__)
     app.setApplicationName("Kevinbot Desktop Client")
     win = MainWindow()
-    logger.debug(f"Executing app gui")
+    logger.debug("Executing app gui")
     app.exec()

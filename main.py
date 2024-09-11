@@ -14,6 +14,8 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QA
 
 import ansi2html
 
+import xbee
+
 from ui.util import add_tabs
 from ui.widgets import WarningBar
 from components import controllers, ControllerManagerWidget, begin_controller_backend
@@ -298,6 +300,7 @@ if __name__ == "__main__":
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
     logger.info(f"Using Python: {platform.python_version()}")
+    logger.info(f"Using xbee-python: {xbee.__version__}")
     logger.info(f"Kevinbot Desktop Client: {__version__}")
 
     threading.Thread(target=controller_backend, daemon=True).start()

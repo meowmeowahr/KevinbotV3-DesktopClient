@@ -63,6 +63,7 @@ class ControllerManagerWidget(QWidget):
 
         # Connected Controllers List
         self.controller_source_layout = QVBoxLayout()
+        self.controller_source_layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addLayout(self.controller_source_layout)
 
         self.refresh_button = QPushButton("Refresh Controllers")

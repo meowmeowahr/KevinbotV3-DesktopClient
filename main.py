@@ -14,7 +14,7 @@ import ansi2html
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar
-from components import controllers
+from components import controllers, ControllerManagerWidget, begin_controller_backend
 
 __version__ = "0.0.0"
 
@@ -56,6 +56,10 @@ class MainWindow(QMainWindow):
         self.root_layout.setContentsMargins(0, 0, 0, 0)
         self.root_widget.setLayout(self.root_layout)
 
+        # Controller
+        self.controller_manager = ControllerManagerWidget(slots=1)
+
+        # Tabs
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(32, 32))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
@@ -68,10 +72,11 @@ class MainWindow(QMainWindow):
             ["Settings", qta.icon("mdi6.cog")],
             ["About", qta.icon("mdi6.information-slab-circle")],
         ]
-        self.main, self.controller, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
+        self.main, self.connection_widget, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
 
         self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.debug.setLayout(self.debug_layout(self.settings))
+        self.connection_widget.setLayout(self.connection_layout(self.settings))
 
         self.show()
 
@@ -154,6 +159,27 @@ class MainWindow(QMainWindow):
 
         return layout
 
+    def connection_layout(self, _: QSettings):
+        layout = QHBoxLayout()
+
+        splitter = QSplitter()
+        layout.addWidget(splitter)
+
+
+        controller_widget = QWidget()
+        splitter.addWidget(controller_widget)
+
+        controller_layout = QVBoxLayout()
+        controller_widget.setLayout(controller_layout)
+
+        controller_help = WarningBar("The first controller in the list will be the active controller.\n"
+                                     "Drag-and-Drop controllers to select the active one")
+        controller_layout.addWidget(controller_help)
+
+        controller_layout.addWidget(self.controller_manager)
+
+        return layout
+
     @staticmethod
     def update_logs(log_area: QTextEdit):
         for _ in range(dc_log_queue.qsize()):
@@ -196,6 +222,9 @@ if __name__ == "__main__":
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
     logger.info(f"Using Python: {platform.python_version()}")
     logger.info(f"Kevinbot Desktop Client: {__version__}")
+
+    begin_controller_backend()
+    logger.debug("Pyglet backend started in thread")
 
     app = QApplication(sys.argv)
     app.setApplicationVersion(__version__)

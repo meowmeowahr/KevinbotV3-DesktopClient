@@ -1,5 +1,6 @@
 # Logging
 loguru~=0.7.2
+ansi2html~=1.9.2
 
 # Ui
 QtPy~=2.4.1

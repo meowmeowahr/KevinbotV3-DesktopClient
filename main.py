@@ -5,10 +5,12 @@ import platform
 import qdarktheme as qtd
 import qtawesome as qta
 from loguru import logger
-from qtpy.QtCore import QSize, QSettings, qVersion
+from qtpy.QtCore import QSize, QSettings, qVersion, Qt, QTimer
 from qtpy.QtGui import QIcon, QCloseEvent
 from qtpy.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton
+    QRadioButton, QSplitter, QTextEdit
+
+import ansi2html
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar
@@ -44,6 +46,9 @@ class MainWindow(QMainWindow):
         else:
             qtd.setup_theme("auto")
 
+        # Timers
+        self.logger_timer = QTimer()
+
         self.root_widget = QWidget()
         self.setCentralWidget(self.root_widget)
 
@@ -66,6 +71,7 @@ class MainWindow(QMainWindow):
         self.main, self.controller, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
 
         self.settings_widget.setLayout(self.settings_layout(self.settings))
+        self.debug.setLayout(self.debug_layout(self.settings))
 
         self.show()
 
@@ -113,6 +119,27 @@ class MainWindow(QMainWindow):
 
         return layout
 
+    def debug_layout(self, settings: QSettings):
+        layout = QHBoxLayout()
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        layout.addWidget(splitter)
+
+        logger_area = QTextEdit()
+        logger_area.setReadOnly(True)
+        logger_area.setStyleSheet("background-color: black;")
+        splitter.addWidget(logger_area)
+
+        self.logger_timer.setInterval(250)
+        self.logger_timer.timeout.connect(lambda: self.update_logs(logger_area))
+        self.logger_timer.start()
+
+        return layout
+
+    def update_logs(self, log_area: QTextEdit):
+        for _ in range(log_queue.qsize()):
+            log_area.append(log_converter.convert(log_queue.get().strip()))
+
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
 
@@ -126,8 +153,10 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     log_queue = queue.Queue()
+    log_converter = ansi2html.Ansi2HTMLConverter()
+    log_converter.scheme = "osx"
 
-    logger.add(log_queue.put)
+    logger.add(log_queue.put, colorize=True)
 
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
@@ -138,4 +167,5 @@ if __name__ == "__main__":
     app.setApplicationVersion(__version__)
     app.setApplicationName("Kevinbot Desktop Client")
     win = MainWindow()
+    logger.debug(f"Executing app gui")
     app.exec()

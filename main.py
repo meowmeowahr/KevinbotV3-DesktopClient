@@ -180,8 +180,9 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())
-        self.settings.setValue("window/width", self.geometry().width())
-        self.settings.setValue("window/height", self.geometry().height())
+        if not self.isMaximized():
+            self.settings.setValue("window/width", self.geometry().width())
+            self.settings.setValue("window/height", self.geometry().height())
         event.accept()
 
 

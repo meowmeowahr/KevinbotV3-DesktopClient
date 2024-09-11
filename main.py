@@ -164,13 +164,14 @@ class MainWindow(QMainWindow):
         name = QFileDialog.getSaveFileName(self,
                                            'Export Logs',
                                            filter="Plain Text (*.txt);;Colored HTML Document (*.html);;Markdown (*.md)")
-        with open(name[0], "w") as file:
-            if name[1] == "Colored HTML Document (*.html)":
-                file.write(log_area.toHtml())
-            elif name[1] == "Markdown (*.md)":
-                file.write(log_area.toMarkdown())
-            else:
-                file.write(log_area.toPlainText())
+        if name[0]:
+            with open(name[0], "w") as file:
+                if name[1] == "Colored HTML Document (*.html)":
+                    file.write(log_area.toHtml())
+                elif name[1] == "Markdown (*.md)":
+                    file.write(log_area.toMarkdown())
+                else:
+                    file.write(log_area.toPlainText())
 
 
     def set_theme(self, theme: str):

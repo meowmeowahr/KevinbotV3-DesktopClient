@@ -27,12 +27,14 @@ __version__ = "0.0.0"
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app: QApplication, dc_log_queue: queue.Queue, log_converter: ansi2html.Ansi2HTMLConverter):
+    def __init__(self, app: QApplication, dc_log_queue: queue.Queue):
         super().__init__()
         self.setWindowTitle(f"Kevinbot Desktop Client {__version__}")
+        self.setWindowIcon(QIcon("assets/icons/icon.svg"))
 
         self.dc_log_queue = dc_log_queue
-        self.log_converter = log_converter
+        self.log_converter = ansi2html.Ansi2HTMLConverter()
+        self.log_converter.scheme = "osx"
 
         # Settings Manager
         self.settings = QSettings("meowmeowahr", "KevinbotDesktopClient", self)
@@ -84,7 +86,7 @@ class MainWindow(QMainWindow):
         self.root_layout.addWidget(self.tabs)
 
         tabs: list[Tuple[str, QIcon]] = [
-            ("Main", qta.icon("mdi6.hub")),
+            ("Main", QIcon("assets/icons/icon.svg")),
             ("Connections", qta.icon("mdi6.transit-connection-variant")),
             ("Debug", qta.icon("mdi6.bug")),
             ("Settings", qta.icon("mdi6.cog")),
@@ -295,8 +297,6 @@ def controller_backend():
 def main():
     # Log queue and ansi2html converter
     dc_log_queue = queue.Queue()
-    log_converter = ansi2html.Ansi2HTMLConverter()
-    log_converter.scheme = "osx"
     logger.add(dc_log_queue.put, colorize=True)
 
     logger.info(f"Using Qt: {qVersion()}")
@@ -311,7 +311,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationVersion(__version__)
     app.setApplicationName("Kevinbot Desktop Client")
-    win = MainWindow(app, dc_log_queue, log_converter)
+    MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
     app.exec()
 

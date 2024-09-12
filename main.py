@@ -27,9 +27,12 @@ __version__ = "0.0.0"
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, app: QApplication, dc_log_queue: queue.Queue, log_converter: ansi2html.Ansi2HTMLConverter):
         super().__init__()
         self.setWindowTitle(f"Kevinbot Desktop Client {__version__}")
+
+        self.dc_log_queue = dc_log_queue
+        self.log_converter = log_converter
 
         # Settings Manager
         self.settings = QSettings("meowmeowahr", "KevinbotDesktopClient", self)
@@ -253,10 +256,9 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    @staticmethod
-    def update_logs(log_area: QTextEdit):
-        for _ in range(dc_log_queue.qsize()):
-            log_area.append(log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + dc_log_queue.get().strip()))
+    def update_logs(self, log_area: QTextEdit):
+        for _ in range(self.dc_log_queue.qsize()):
+            log_area.append(self.log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + self.dc_log_queue.get().strip()))
 
     def export_logs(self, log_area: QTextEdit):
         name = QFileDialog.getSaveFileName(self,
@@ -309,7 +311,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationVersion(__version__)
     app.setApplicationName("Kevinbot Desktop Client")
-    win = MainWindow()
+    win = MainWindow(app, dc_log_queue, log_converter)
     logger.debug("Executing app gui")
     app.exec()
 

@@ -8,7 +8,7 @@ import qdarktheme as qtd
 import qtawesome as qta
 from loguru import logger
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer
-from PySide6.QtGui import QIcon, QCloseEvent
+from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox
 
@@ -83,6 +83,11 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(32, 32))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
+        self.tabs.setStyleSheet("QTabWidget::pane {"
+                                "border-right: none;"
+                                "border-top: none;"
+                                "border-bottom: none;"
+                                "border-radius: 0px; }")
         self.root_layout.addWidget(self.tabs)
 
         tabs: list[Tuple[str, QIcon]] = [
@@ -97,6 +102,7 @@ class MainWindow(QMainWindow):
         self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.debug.setLayout(self.debug_layout(self.settings))
         self.connection_widget.setLayout(self.connection_layout(self.settings))
+        self.about_widget.setLayout(self.about_layout())
 
         self.show()
 
@@ -255,6 +261,43 @@ class MainWindow(QMainWindow):
         baud_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/baud", int(val)))
         flow_check.stateChanged.connect(lambda val: settings.setValue("comm/fc", val == 2))
         api_mode_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/escaped", val == "API Escaped"))
+
+        return layout
+
+    def about_layout(self):
+        layout = QVBoxLayout()
+
+        
+        icon_layout = QHBoxLayout()
+        layout.addLayout(icon_layout)
+
+        icon = QLabel()
+        icon.setPixmap(QPixmap("assets/icons/icon.svg"))
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setScaledContents(True)
+        icon.setFixedSize(QSize(192, 192))
+        icon_layout.addWidget(icon)
+
+        name_text = QLabel("Kevinbot Desktop Client")
+        name_text.setStyleSheet(
+            "font-size: 30px; font-weight: bold; font-family: Roboto;"
+        )
+        name_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(name_text)
+
+        version = QLabel(f"Version {__version__}")
+        version.setStyleSheet(
+            "font-size: 24px; font-weight: semibold; font-family: Roboto;"
+        )
+        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(version)
+
+        qt_version = QLabel("PyQt Version: " + qVersion())
+        qt_version.setStyleSheet(
+            "font-size: 22px; font-weight: normal; font-family: Roboto;"
+        )
+        qt_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(qt_version)
 
         return layout
 

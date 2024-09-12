@@ -290,7 +290,7 @@ def controller_backend():
         logger.error(f"Error in controller backend: {repr(e)}")
         controller_backend()
 
-if __name__ == "__main__":
+def main():
     # Log queue and ansi2html converter
     dc_log_queue = queue.Queue()
     log_converter = ansi2html.Ansi2HTMLConverter()
@@ -312,3 +312,6 @@ if __name__ == "__main__":
     win = MainWindow()
     logger.debug("Executing app gui")
     app.exec()
+
+if __name__ == "__main__":
+    main()

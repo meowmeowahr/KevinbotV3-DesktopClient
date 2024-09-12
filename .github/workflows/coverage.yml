@@ -30,7 +30,7 @@ jobs:
           # start xvfb in the background
           sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
       - name: Install dependencies
-        run: pip install pytest pytest-cov pytest-qt && pip install -r requirements.txt
+        run: pip install pytest pytest-cov pytest-qt mock && pip install -r requirements.txt
 
       - name: Run tests
         run: pytest --cov

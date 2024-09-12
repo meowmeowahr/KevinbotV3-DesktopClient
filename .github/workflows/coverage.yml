@@ -19,13 +19,13 @@ jobs:
       - name: Install EGL mesa
         run: |
           sudo apt-get update -y -qq
-          sudo apt-get install -y -qq libegl1-mesa libegl1-mesa-dev   
+          sudo apt-get install -y -qq libegl1-mesa libegl1-mesa-dev xvfb x11-utils libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0  
 
       - name: Install dependencies
         run: pip install pytest pytest-cov pytest-qt && pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest --cov
+        run: xvfb-run pytest --cov
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v4

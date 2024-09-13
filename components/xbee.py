@@ -21,11 +21,14 @@ class XBeeManager(QObject):
         self.serial = None
         self.xbee = None
 
-    def get_available_ports(self) -> list[str]:
+    def get_available_ports(self, system=True) -> list[str]:
         """Return a list of available serial ports."""
         port_strs = []
         for port in serial.tools.list_ports.comports():
-            port_strs.append(port.device)
+            if not system and not port.device.startswith("/dev/ttyS"):
+                port_strs.append(port.device)
+            elif system:
+                port_strs.append(port.device)
         return port_strs
 
 

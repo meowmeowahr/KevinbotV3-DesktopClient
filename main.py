@@ -102,7 +102,8 @@ class MainWindow(QMainWindow):
 
         self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.debug.setLayout(self.debug_layout(self.settings))
-        self.connection_widget.setLayout(self.connection_layout(self.settings))
+        self.comm_layout, self.port_combo, self.serial_connect_button = self.connection_layout(self.settings)
+        self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
 
         self.show()
@@ -136,6 +137,21 @@ class MainWindow(QMainWindow):
 
         theme_system = QRadioButton("System")
         dark_mode_layout.addWidget(theme_system)
+
+        # Communications
+        comm_widget = QWidget()
+        toolbox.addItem(comm_widget, "Communication")
+
+        comm_layout = QVBoxLayout()
+        comm_widget.setLayout(comm_layout)
+
+        hide_sys_ports = QCheckBox("Hide System Ports")
+        hide_sys_ports.setChecked(settings.value("comm/hide_sys_ports", False, type=bool)) # type: ignore
+        hide_sys_ports.clicked.connect(lambda: self.set_hide_sys_ports(hide_sys_ports.isChecked()))
+        comm_layout.addWidget(hide_sys_ports)
+
+        hide_sys_details = QLabel("Hiding system ports will hide ports beginning with \\dev\\ttyS*")
+        comm_layout.addWidget(hide_sys_details)
 
         if settings.value("window/theme", "dark") == "dark":
             theme_dark.setChecked(True)
@@ -244,16 +260,9 @@ class MainWindow(QMainWindow):
         api_mode_combo.addItem("API Unescaped")
         comm_options_layout.addWidget(api_mode_combo, 3, 1, 1, 2)
 
-        def refresh():
-            previous_port = port_combo.currentText()
-            port_combo.clear()
-            port_combo.addItems(self.xbee.get_available_ports())
-            if previous_port in self.xbee.get_available_ports():
-                port_combo.setCurrentText(previous_port)
-
         refresh_ports_button = QPushButton("Refresh")
         refresh_ports_button.setIcon(qta.icon("mdi6.refresh"))
-        refresh_ports_button.clicked.connect(refresh)
+        refresh_ports_button.clicked.connect(self.reload_ports)
         comm_options_layout.addWidget(refresh_ports_button, 4, 2)
 
         connect_button = QPushButton("Connect")
@@ -269,9 +278,11 @@ class MainWindow(QMainWindow):
         api_mode_combo.currentTextChanged.connect(lambda val: self.xbee.set_api_escaped(val == "API Escaped"))
 
         # QSettings getters
-        port_combo.addItems(self.xbee.get_available_ports())
-        if settings.value("comm/port", "COM3") in self.xbee.get_available_ports():
+        port_combo.addItems(self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False, type=bool)))
+        if settings.value("comm/port", "COM3") in self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False)):
             port_combo.setCurrentText(settings.value("comm/port", "COM3")) # type: ignore
+        if port_combo.count() == 0:
+            connect_button.setEnabled(False)
         baud_combo.setCurrentText(str(settings.value("comm/baud", 230400, type=int)))
         flow_check.setChecked(settings.value("comm/fc", False, type=bool)) # type: ignore
         api_mode_combo.setCurrentText(settings.value("comm/escaped", False, type=bool) and "API Escaped" or "API Unescaped") # type: ignore
@@ -282,7 +293,7 @@ class MainWindow(QMainWindow):
         flow_check.stateChanged.connect(lambda val: settings.setValue("comm/fc", val == 2))
         api_mode_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/escaped", val == "API Escaped"))
 
-        return layout
+        return layout, port_combo, connect_button
 
     def about_layout(self):
         layout = QVBoxLayout()
@@ -338,9 +349,24 @@ class MainWindow(QMainWindow):
                 else:
                     file.write(log_area.toPlainText())
 
+    def reload_ports(self):
+        previous_port = self.port_combo.currentText()
+        self.port_combo.clear()
+        self.port_combo.addItems(self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False)))
+        if previous_port in self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False)):
+            self.port_combo.setCurrentText(previous_port)
+
+        if self.port_combo.count() == 0:
+            self.serial_connect_button.setEnabled(False)
+        else:
+            self.serial_connect_button.setEnabled(True)
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
+
+    def set_hide_sys_ports(self, hide: bool):
+        self.settings.setValue("comm/hide_sys_ports", hide)
+        self.reload_ports()
 
     def serial_error_handler(self, error: str):
         # QErrorMessage

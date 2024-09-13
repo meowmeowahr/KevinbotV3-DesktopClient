@@ -10,7 +10,7 @@ from loguru import logger
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox
+    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage
 
 import ansi2html
 
@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
             self.settings.value("comm/fc", False, type=bool), # type: ignore
             self.settings.value("comm/escaped", False, type=bool), # type: ignore
         )
+        self.xbee.on_error.connect(self.serial_error_handler)
 
         # Tabs
         self.tabs = QTabWidget()
@@ -213,6 +214,7 @@ class MainWindow(QMainWindow):
 
         # Port, baud rate, flow control, escaped config grid layout
         comm_options_layout = QGridLayout()
+        comm_options_layout.setColumnStretch(1, 1)
         comm_layout.addLayout(comm_options_layout)
 
         port_label = QLabel("Port")
@@ -228,19 +230,37 @@ class MainWindow(QMainWindow):
         comm_options_layout.addWidget(api_label, 3, 0)
 
         port_combo = QComboBox()
-        comm_options_layout.addWidget(port_combo, 0, 1)
+        comm_options_layout.addWidget(port_combo, 0, 1, 1, 2)
 
         baud_combo = QComboBox()
         baud_combo.addItems(list(map(str, constants.BAUD_RATES)))
-        comm_options_layout.addWidget(baud_combo, 1, 1)
+        comm_options_layout.addWidget(baud_combo, 1, 1, 1, 2)
 
         flow_check = QCheckBox("Enable")
-        comm_options_layout.addWidget(flow_check, 2, 1)
+        comm_options_layout.addWidget(flow_check, 2, 1, 1, 2)
 
         api_mode_combo = QComboBox()
         api_mode_combo.addItem("API Escaped")
         api_mode_combo.addItem("API Unescaped")
-        comm_options_layout.addWidget(api_mode_combo, 3, 1)
+        comm_options_layout.addWidget(api_mode_combo, 3, 1, 1, 2)
+
+        def refresh():
+            previous_port = port_combo.currentText()
+            port_combo.clear()
+            port_combo.addItems(self.xbee.get_available_ports())
+            if previous_port in self.xbee.get_available_ports():
+                port_combo.setCurrentText(previous_port)
+
+        refresh_ports_button = QPushButton("Refresh")
+        refresh_ports_button.setIcon(qta.icon("mdi6.refresh"))
+        refresh_ports_button.clicked.connect(refresh)
+        comm_options_layout.addWidget(refresh_ports_button, 4, 2)
+
+        connect_button = QPushButton("Connect")
+        connect_button.setIcon(qta.icon("mdi6.wifi"))
+        connect_button.clicked.connect(self.xbee.open)
+        comm_options_layout.addWidget(connect_button, 4, 1)
+
 
         # Option setters
         port_combo.currentTextChanged.connect(lambda val: self.xbee.set_port(val))
@@ -321,6 +341,13 @@ class MainWindow(QMainWindow):
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
+
+    def serial_error_handler(self, error: str):
+        # QErrorMessage
+        msg = QErrorMessage(self)
+        msg.setWindowTitle("Serial Error")
+        msg.showMessage(f"Serial Error: {error}")
+        msg.exec()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.setValue("window/x", self.geometry().x())

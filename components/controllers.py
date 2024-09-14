@@ -19,7 +19,7 @@ from ui.delegates import NoFocusDelegate
 from .uuid_manager import UuidManager
 
 
-def begin_controller_backend():
+def begin_controller_backend(): # pragma: no cover
     """
     Blocking loop - pyglet backend for detecting controllers
     :return:

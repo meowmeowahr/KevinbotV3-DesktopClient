@@ -1,2 +1,5 @@
 # Optional requirements for development
 vgamepad~=0.1.0
+
+pytest~=8.3.3
+pytest-qt~=4.4.0

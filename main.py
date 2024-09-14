@@ -406,7 +406,7 @@ class MainWindow(QMainWindow):
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
 
-def controller_backend():
+def controller_backend(): # pragma: no cover
     try:
         begin_controller_backend()
     except RuntimeError as e:

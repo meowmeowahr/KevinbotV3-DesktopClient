@@ -7,7 +7,7 @@ from typing import Tuple
 import qdarktheme as qtd
 import qtawesome as qta
 from loguru import logger
-from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer
+from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit
@@ -27,7 +27,7 @@ __version__ = "0.0.0"
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app: QApplication, dc_log_queue: queue.Queue):
+    def __init__(self, app: QApplication | QCoreApplication, dc_log_queue: queue.Queue):
         super().__init__()
         self.setWindowTitle(f"Kevinbot Desktop Client {__version__}")
         self.setWindowIcon(QIcon("assets/icons/icon.svg"))
@@ -413,7 +413,7 @@ def controller_backend(): # pragma: no cover
         logger.error(f"Error in controller backend: {repr(e)}")
         controller_backend()
 
-def main():
+def main(app: QApplication | None = None):
     # Log queue and ansi2html converter
     dc_log_queue = queue.Queue()
     logger.add(dc_log_queue.put, colorize=True)
@@ -427,9 +427,10 @@ def main():
     threading.Thread(target=controller_backend, daemon=True).start()
     logger.debug("Pyglet backend started in thread")
 
-    app = QApplication(sys.argv)
-    app.setApplicationVersion(__version__)
-    app.setApplicationName("Kevinbot Desktop Client")
+    if not app:
+        app = QApplication(sys.argv)
+        app.setApplicationVersion(__version__)
+        app.setApplicationName("Kevinbot Desktop Client")
     MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
     app.exec()

@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
         # Theme
         theme = self.settings.value("window/theme", "dark", type=str)
         if theme == "dark":
-            qtd.setup_theme("dark", additional_qss="#warning_bar_text{color: #050505;}")
+            qtd.setup_theme("dark", additional_qss="#warning_bar_text{color: #050505;}", custom_colors=constants.CUSTOM_COLORS_DARK)
             qta.dark(app)
         elif theme == "light":
             qtd.setup_theme("light")
@@ -83,6 +83,7 @@ class MainWindow(QMainWindow):
             self.settings.value("comm/escaped", False, type=bool), # type: ignore
         )
         self.xbee.on_error.connect(self.serial_error_handler)
+        self.xbee.on_open.connect(self.serial_open_handler)
 
         # Tabs
         self.tabs = QTabWidget()
@@ -276,7 +277,7 @@ class MainWindow(QMainWindow):
 
         connect_button = QPushButton("Connect")
         connect_button.setIcon(qta.icon("mdi6.wifi"))
-        connect_button.clicked.connect(self.xbee.open)
+        connect_button.clicked.connect(self.open_connection)
         comm_options_layout.addWidget(connect_button, 4, 1)
 
 
@@ -413,19 +414,37 @@ class MainWindow(QMainWindow):
         self.reload_ports()
 
     def serial_error_handler(self, error: str):
-        # QErrorMessage
+        logger.error(f"Serial error: {error}")
+
         msg = QErrorMessage(self)
         msg.setWindowTitle("Serial Error")
         msg.showMessage(f"Serial Error: {error}")
         msg.exec()
 
+    def serial_open_handler(self):
+        self.serial_connect_button.setText("Disconnect")
+
+        logger.success("Serial port opened")
+
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.end_communication()
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())
         if not self.isMaximized():
             self.settings.setValue("window/width", self.geometry().width())
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
+
+    def open_connection(self):
+        if self.xbee.is_open():
+            self.end_communication()
+            return
+        self.xbee.open()        
+
+    def end_communication(self):
+        self.xbee.close()
+        self.serial_connect_button.setText("Connect")
+        logger.info("Communication ended")
 
 def controller_backend(): # pragma: no cover
     try:

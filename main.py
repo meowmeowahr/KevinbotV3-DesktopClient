@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
 
         self.controller_manager.on_connected.connect(self.controller_connected_handler)
         self.controller_manager.on_disconnected.connect(self.controller_disconnected_handler)
+        self.controller_manager.on_refresh.connect(self.controller_refresh_handler)
 
         self.left_stick_update.connect(self.update_left_stick_visuals)
         self.right_stick_update.connect(self.update_right_stick_visuals)
@@ -545,6 +546,12 @@ class MainWindow(QMainWindow):
     def controller_connected_handler(self, controller: pyglet.input.Controller):
         controllers.map_stick(controller, self.controller_stick_action)
         logger.success(f"Controller connected: {controller.name}")
+
+    def controller_refresh_handler(self, controller: list[pyglet.input.Controller]):
+        logger.debug("Controllers refreshed")
+        for con in controller:
+            controllers.map_stick(con, self.controller_stick_action)
+            logger.debug(f"Mapped controller sticks: {con.name}")
 
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")

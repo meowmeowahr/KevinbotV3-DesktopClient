@@ -57,6 +57,7 @@ def map_stick(controller: pyglet.input.Controller, action: typing.Callable):
 class ControllerManagerWidget(QWidget):
     on_disconnected = Signal(pyglet.input.Controller)
     on_connected = Signal(pyglet.input.Controller)
+    on_refresh = Signal(list)
 
     def __init__(self, slots=2):
         super().__init__()
@@ -97,8 +98,12 @@ class ControllerManagerWidget(QWidget):
 
 
     def refresh_controllers(self):
+        for controller in self.controller_store.get_items():
+            controller.close()
+
         self.connected_list.clear()
         self.controller_store.clear()
+        self.controllers: list[pyglet.input.Controller] = self._controller_manager.get_controllers()
         for controller in self.controllers:
             self.controller_store.add_item(controller)
             item = QListWidgetItem(controller.name)
@@ -111,6 +116,7 @@ class ControllerManagerWidget(QWidget):
             controller.on_button_release = self.controller_release
             controller.on_stick_motion = self.controller_stick_motion
             self.connected_list.addItem(item)
+        self.on_refresh.emit(self.controller_store.get_items())
 
     def controller_press(self, controller: pyglet.input.Controller, button: str):
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):

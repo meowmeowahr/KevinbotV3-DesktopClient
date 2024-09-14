@@ -14,6 +14,10 @@ class UuidManager:
     def get_item(self, item_uuid):
         """Retrieve an item by its UUID."""
         return self._items.get(item_uuid)
+    
+    def get_items(self):
+        """Retrieve all items managed."""
+        return list(self._items.values())
 
     def get_uuid(self, item):
         """Retrieve the UUID of an item."""

@@ -25,3 +25,10 @@ def add_tabs(bar: QTabWidget, tabs: list[Tuple[str, QIcon]]) -> list[QWidget]:
                                              [QTabWidget.TabPosition.West, QTabWidget.TabPosition.East] else 0), "")
 
     return widgets
+
+def initials(phrase):
+    words = phrase.split()
+    result = ""
+    for i in range(len(words)):
+        result += words[i][0].upper()
+    return result

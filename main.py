@@ -10,20 +10,24 @@ from loguru import logger
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit
+    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
+    QScrollArea
 
 import ansi2html
 
 import xbee
 
 from ui.util import add_tabs
-from ui.widgets import WarningBar, CustomTabWidget
+from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget
 from components import controllers, ControllerManagerWidget, begin_controller_backend
 from components.xbee import XBeeManager
 
 import constants
 
 __version__ = "0.0.0"
+__authors__ = [
+    {"name": "Kevin Ahr", "email": "meowmeowahr@gmail.com", "website": "https://github.com/meowmeowahr", "title": "Primary Developer"},
+]
 
 
 class MainWindow(QMainWindow):
@@ -341,7 +345,23 @@ class MainWindow(QMainWindow):
         layout.addWidget(tabs)
 
         # Authors
-        tabs.addTab(QWidget(), "Authors", qta.icon("mdi6.account-multiple"))
+        authors_scroll = QScrollArea()
+        authors_scroll.setWidgetResizable(True)
+        tabs.addTab(authors_scroll, "Authors", qta.icon("mdi6.account-multiple"))
+
+        authors_widget = QWidget()
+        authors_scroll.setWidget(authors_widget)
+
+        authors_layout = QVBoxLayout()
+        authors_widget.setLayout(authors_layout)
+
+        for author in __authors__:
+            author_widget = AuthorWidget()
+            author_widget.author_name = author["name"]
+            author_widget.author_title = author["title"]
+            author_widget.author_email = author["email"]
+            author_widget.author_website = author["website"]
+            authors_layout.addWidget(author_widget)
 
 
         # License

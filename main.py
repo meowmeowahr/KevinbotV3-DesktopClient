@@ -527,6 +527,7 @@ class MainWindow(QMainWindow):
 
     def begin_handshake(self):
         self.statusBar().showMessage("Waiting for handshake...")
+        # self.xbee.broadcast("handshake")
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):

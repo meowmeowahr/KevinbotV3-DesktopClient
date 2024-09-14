@@ -89,6 +89,7 @@ class ControllerManagerWidget(QWidget):
         for controller in self.controllers:
             self.controller_store.add_item(controller)
             item = QListWidgetItem(controller.name)
+            item.setToolTip(f"{controller.name}; GUID: {controller.guid}")
             item.setFont(QFont(self.font().families(), 11))
             item.setData(Qt.ItemDataRole.UserRole, self.controller_store.get_uuid(controller))
             if not controller.device.is_open:

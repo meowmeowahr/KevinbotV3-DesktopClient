@@ -95,7 +95,8 @@ class MainWindow(QMainWindow):
                                 "border-radius: 0px; }"
                                 "QTabWidget > QTabBar::tab {"
                                 "padding-top: -12px;"
-                                "margin-bottom: 12px;"
+                                "margin-bottom: 6px;"
+                                "margin-bottom: 6px;"
                                 "}")
         self.root_layout.addWidget(self.tabs)
 

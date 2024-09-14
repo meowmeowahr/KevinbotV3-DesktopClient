@@ -41,6 +41,20 @@ def map_press(controller: pyglet.input.Controller, action: typing.Callable):
 
     controller.on_button_press = handler
 
+def map_stick(controller: pyglet.input.Controller, action: typing.Callable):
+    """
+    Adds a new mapping to an existing Controller while keeping all old mappings
+    :param controller: pyglet controller to map
+    :param action: callable function that handles all button presses
+    :return:
+    """
+    previous_mapping = controller.on_stick_motion
+    def handler(controller: pyglet.input.Controller, stick: str, xvalue: float, yvalue: float):
+        previous_mapping(controller, stick, xvalue, yvalue)
+        action(controller, stick, xvalue, yvalue)
+
+    controller.on_stick_motion = handler
+
 class ControllerManagerWidget(QWidget):
     on_disconnected = Signal(pyglet.input.Controller)
     on_connected = Signal(pyglet.input.Controller)
@@ -54,7 +68,7 @@ class ControllerManagerWidget(QWidget):
         self._controller_manager = pyglet.input.ControllerManager()
         self._controller_manager.on_disconnect = self.controller_disconnect
         self._controller_manager.on_connect = self.controller_reconnect
-        self.controllers = self._controller_manager.get_controllers()
+        self.controllers: list[pyglet.input.Controller] = self._controller_manager.get_controllers()
         self.controller_store = UuidManager()
 
         # Layout
@@ -96,19 +110,21 @@ class ControllerManagerWidget(QWidget):
                 controller.open()
             controller.on_button_press = self.controller_press
             controller.on_button_release = self.controller_release
+            controller.on_stick_motion = self.controller_stick_motion
             self.connected_list.addItem(item)
 
-    def controller_press(self, controller: pyglet.input.Controller, _) -> Controller:
+    def controller_press(self, controller: pyglet.input.Controller, button: str):
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
             if controller == self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)):
                 item.setBackground(QColor(QRgba64().fromRgba(76, 175, 80,127)))
-        return controller
 
-    def controller_release(self, controller: pyglet.input.Controller, _) -> Controller:
+    def controller_release(self, controller: pyglet.input.Controller, button: str):
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
             if controller == self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)):
                 item.setBackground(Qt.GlobalColor.transparent)
-        return controller
+
+    def controller_stick_motion(self, controller: pyglet.input.Controller, stick: str, xvalue: float, yvalue: float):
+        pass
 
     def controller_disconnect(self, controller: pyglet.input.Controller):
         self.controllers.remove(controller)

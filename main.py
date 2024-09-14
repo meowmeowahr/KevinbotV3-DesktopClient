@@ -4,10 +4,13 @@ import platform
 import threading
 from typing import Tuple
 
+from loguru import logger
+
+import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
-from loguru import logger
-from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication
+import pyqtgraph as qtg
+from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
@@ -31,6 +34,9 @@ __authors__ = [
 
 
 class MainWindow(QMainWindow):
+    left_stick_update = Signal(pyglet.input.Controller, float, float)
+    right_stick_update = Signal(pyglet.input.Controller, float, float)
+
     def __init__(self, app: QApplication | QCoreApplication, dc_log_queue: queue.Queue):
         super().__init__()
         self.setWindowTitle(f"Kevinbot Desktop Client {__version__}")
@@ -75,6 +81,15 @@ class MainWindow(QMainWindow):
         # Controller
         self.controller_manager = ControllerManagerWidget(slots=1)
 
+        for controller in self.controller_manager.controllers:
+            controllers.map_stick(controller, self.controller_stick_action)
+
+        self.controller_manager.on_connected.connect(self.controller_connected_handler)
+        self.controller_manager.on_disconnected.connect(self.controller_disconnected_handler)
+
+        self.left_stick_update.connect(self.update_left_stick_visuals)
+        self.right_stick_update.connect(self.update_right_stick_visuals)
+
         # Communications
         self.xbee = XBeeManager(
             self.settings.value("comm/port", ""),
@@ -112,7 +127,7 @@ class MainWindow(QMainWindow):
 
         self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.debug.setLayout(self.debug_layout(self.settings))
-        self.comm_layout, self.port_combo, self.serial_connect_button = self.connection_layout(self.settings)
+        self.comm_layout, self.port_combo, self.serial_connect_button, self.stick_graph_left, self.stick_graph_right = self.connection_layout(self.settings)
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
 
@@ -222,14 +237,63 @@ class MainWindow(QMainWindow):
         controller_widget = QWidget()
         splitter.addWidget(controller_widget)
 
-        controller_layout = QVBoxLayout()
+        controller_layout = QHBoxLayout()
         controller_widget.setLayout(controller_layout)
+
+        controller_left_layout = QVBoxLayout()
+        controller_layout.addLayout(controller_left_layout)
 
         controller_help = WarningBar("The first controller in the list will be the active controller.\n"
                                      "Drag-and-Drop controllers to select the active one")
-        controller_layout.addWidget(controller_help)
+        controller_left_layout.addWidget(controller_help)
 
-        controller_layout.addWidget(self.controller_manager)
+        controller_left_layout.addWidget(self.controller_manager)
+
+        controller_right_layout = QVBoxLayout()
+        controller_layout.addLayout(controller_right_layout)
+
+        # Joystick visuals
+        left_stick_graph = qtg.PlotWidget()
+        left_stick_graph.setMouseTracking(False)
+        left_stick_graph.setBackground("transparent")
+        left_stick_graph.showGrid(True, True, 1)
+        left_stick_graph.hideButtons()
+        left_stick_graph.setMenuEnabled(False)
+        left_stick_graph.setMouseEnabled(x=False, y=False)
+        left_stick_graph.getAxis('bottom').setStyle(showValues=False)
+        left_stick_graph.getAxis('left').setStyle(showValues=False)
+        left_stick_graph.setLimits(xMin=-1, xMax=1, yMin=-1, yMax=1)
+        left_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5) # type: ignore
+        left_stick_graph.setFixedSize(QSize(100, 100))
+        left_stick_graph.plot([0], [0],
+              pen=None,
+              name="BEP",
+              symbol='o',
+              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
+              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+              symbolSize=8)
+        controller_right_layout.addWidget(left_stick_graph)
+
+        right_stick_graph = qtg.PlotWidget()
+        right_stick_graph.setMouseTracking(False)
+        right_stick_graph.setBackground("transparent")
+        right_stick_graph.showGrid(True, True, 1)
+        right_stick_graph.hideButtons()
+        right_stick_graph.setMenuEnabled(False)
+        right_stick_graph.setMouseEnabled(x=False, y=False)
+        right_stick_graph.getAxis('bottom').setStyle(showValues=False)
+        right_stick_graph.getAxis('left').setStyle(showValues=False)
+        right_stick_graph.setLimits(xMin=-1, xMax=1, yMin=-1, yMax=1)
+        right_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5) # type: ignore
+        right_stick_graph.setFixedSize(QSize(100, 100))
+        right_stick_graph.plot([0], [0],
+              pen=None,
+              name="BEP",
+              symbol='o',
+              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
+              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+              symbolSize=8)
+        controller_right_layout.addWidget(right_stick_graph)
 
         # Comm
         comm_widget = QWidget()
@@ -303,7 +367,7 @@ class MainWindow(QMainWindow):
         flow_check.stateChanged.connect(lambda val: settings.setValue("comm/fc", val == 2))
         api_mode_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/escaped", val == "API Escaped"))
 
-        return layout, port_combo, connect_button
+        return layout, port_combo, connect_button, left_stick_graph, right_stick_graph
 
     def about_layout(self):
         layout = QHBoxLayout()
@@ -425,6 +489,46 @@ class MainWindow(QMainWindow):
         self.serial_connect_button.setText("Disconnect")
 
         logger.success("Serial port opened")
+
+    def controller_connected_handler(self, controller: pyglet.input.Controller):
+        controllers.map_stick(controller, self.controller_stick_action)
+        logger.success(f"Controller connected: {controller.name}")
+
+    def controller_disconnected_handler(self, controller: pyglet.input.Controller):
+        logger.warning(f"Controller disconnected: {controller.name}")
+
+    def controller_stick_action(self, controller: pyglet.input.Controller, stick: str, xvalue: float, yvalue: float):
+        if controller == self.controller_manager.get_controllers()[0] and stick == "leftstick":
+            self.left_stick_update.emit(controller, xvalue, yvalue)
+        elif controller == self.controller_manager.get_controllers()[0] and stick == "rightstick":
+            self.right_stick_update.emit(controller, xvalue, yvalue)
+    def update_left_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
+        if controller != self.controller_manager.get_controllers()[0]:
+            return
+
+        if self.tabs.currentIndex() == 1:
+            self.stick_graph_left.clear()
+            self.stick_graph_left.plot([xvalue], [yvalue],
+              pen=None,
+              name="BEP",
+              symbol='o',
+              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
+              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+              symbolSize=8)
+            
+    def update_right_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
+        if controller != self.controller_manager.get_controllers()[0]:
+            return
+
+        if self.tabs.currentIndex() == 1:
+            self.stick_graph_right.clear()
+            self.stick_graph_right.plot([xvalue], [yvalue],
+              pen=None,
+              name="BEP",
+              symbol='o',
+              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
+              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+              symbolSize=8)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.end_communication()

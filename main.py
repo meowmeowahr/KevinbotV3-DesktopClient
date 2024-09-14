@@ -141,6 +141,9 @@ class MainWindow(QMainWindow):
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
 
+        # Status Bar
+        self.statusBar().showMessage("Ready")
+
         self.show()
 
     def settings_layout(self, settings: QSettings):
@@ -512,12 +515,18 @@ class MainWindow(QMainWindow):
         if self.state.connected:
             self.end_communication()
             return
+        self.statusBar().showMessage("Opening connection...")
         self.xbee.open()
         self.state.waiting_for_handshake = True      
+        self.begin_handshake()
 
     def end_communication(self):
         self.xbee.close()
         logger.info("Communication ended")
+        self.statusBar().showMessage("Connection ended")
+
+    def begin_handshake(self):
+        self.statusBar().showMessage("Waiting for handshake...")
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):

@@ -10,14 +10,14 @@ from loguru import logger
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage
+    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit
 
 import ansi2html
 
 import xbee
 
 from ui.util import add_tabs
-from ui.widgets import WarningBar
+from ui.widgets import WarningBar, CustomTabWidget
 from components import controllers, ControllerManagerWidget, begin_controller_backend
 from components.xbee import XBeeManager
 
@@ -82,13 +82,17 @@ class MainWindow(QMainWindow):
 
         # Tabs
         self.tabs = QTabWidget()
-        self.tabs.setIconSize(QSize(32, 32))
+        self.tabs.setIconSize(QSize(36, 36))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
         self.tabs.setStyleSheet("QTabWidget::pane {"
                                 "border-right: none;"
                                 "border-top: none;"
                                 "border-bottom: none;"
-                                "border-radius: 0px; }")
+                                "border-radius: 0px; }"
+                                "QTabWidget > QTabBar::tab {"
+                                "padding-top: -12px;"
+                                "margin-bottom: 12px;"
+                                "}")
         self.root_layout.addWidget(self.tabs)
 
         tabs: list[Tuple[str, QIcon]] = [
@@ -150,7 +154,7 @@ class MainWindow(QMainWindow):
         hide_sys_ports.clicked.connect(lambda: self.set_hide_sys_ports(hide_sys_ports.isChecked()))
         comm_layout.addWidget(hide_sys_ports)
 
-        hide_sys_details = QLabel("Hiding system ports will hide ports beginning with \\dev\\ttyS*")
+        hide_sys_details = QLabel("Hiding system ports will hide ports beginning with /dev/ttyS*")
         comm_layout.addWidget(hide_sys_details)
 
         if settings.value("window/theme", "dark") == "dark":
@@ -296,11 +300,13 @@ class MainWindow(QMainWindow):
         return layout, port_combo, connect_button
 
     def about_layout(self):
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
 
+        left_layout = QVBoxLayout()
+        layout.addLayout(left_layout)
         
         icon_layout = QHBoxLayout()
-        layout.addLayout(icon_layout)
+        left_layout.addLayout(icon_layout)
 
         icon = QLabel()
         icon.setPixmap(QPixmap("assets/icons/icon.svg"))
@@ -314,21 +320,38 @@ class MainWindow(QMainWindow):
             "font-size: 30px; font-weight: bold; font-family: Roboto;"
         )
         name_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(name_text)
+        left_layout.addWidget(name_text)
 
         version = QLabel(f"Version {__version__}")
         version.setStyleSheet(
             "font-size: 24px; font-weight: semibold; font-family: Roboto;"
         )
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(version)
+        left_layout.addWidget(version)
 
         qt_version = QLabel("PyQt Version: " + qVersion())
         qt_version.setStyleSheet(
             "font-size: 22px; font-weight: normal; font-family: Roboto;"
         )
         qt_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(qt_version)
+        left_layout.addWidget(qt_version)
+
+        tabs = CustomTabWidget()
+        tabs.icon_size = QSize(32, 32)
+        layout.addWidget(tabs)
+
+        # Authors
+        tabs.addTab(QWidget(), "Authors", qta.icon("mdi6.account-multiple"))
+
+
+        # License
+
+        license_viewer = QPlainTextEdit()
+        
+        with open("LICENSE", "r") as file:
+            license_viewer.setPlainText(file.read())
+
+        tabs.addTab(license_viewer, "License", qta.icon("mdi6.gavel"))
 
         return layout
 

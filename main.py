@@ -15,7 +15,7 @@ from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplicat
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
-    QScrollArea
+    QScrollArea, QMessageBox
 
 import ansi2html
 
@@ -527,7 +527,7 @@ class MainWindow(QMainWindow):
 
     def begin_handshake(self):
         self.statusBar().showMessage("Waiting for handshake...")
-        # self.xbee.broadcast("handshake")
+        self.xbee.broadcast(f"connection.remotes.add=DESKTOPCLIENT|{__version__}|kevinbot.dc")
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):
@@ -576,6 +576,17 @@ class MainWindow(QMainWindow):
         self.settings.setValue("window/theme", theme)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self.state.connected:
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Close while Connected?")
+            msg.setText("Are you sure you want to close the application while connected?")
+            msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            msg.setIcon(QMessageBox.Icon.Question)
+            result = msg.exec()
+            if result == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+
         self.end_communication()
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())

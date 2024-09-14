@@ -112,7 +112,7 @@ class Profile(QLabel):
         super().__init__(parent)
         self.initials = initials
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setMinimumSize(64, 64)
+        self.setFixedSize(64, 64)
         self.setText(self.initials)
         self.setStyleSheet(self.generate_stylesheet())
 

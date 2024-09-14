@@ -375,8 +375,8 @@ class MainWindow(QMainWindow):
     def reload_ports(self):
         previous_port = self.port_combo.currentText()
         self.port_combo.clear()
-        self.port_combo.addItems(self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False)))
-        if previous_port in self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False)):
+        self.port_combo.addItems(self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False, type=bool)))
+        if previous_port in self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False, type=bool)):
             self.port_combo.setCurrentText(previous_port)
 
         if self.port_combo.count() == 0:

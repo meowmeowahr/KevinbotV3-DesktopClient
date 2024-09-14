@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
         # Timers
         self.logger_timer = QTimer()
         self.handshake_timer = QTimer()
-        self.handshake_timer.setInterval(1000)
+        self.handshake_timer.setInterval(1500)
         self.handshake_timer.timeout.connect(self.handshake_timeout_handler)
 
         self.root_widget = QWidget()
@@ -116,6 +116,7 @@ class MainWindow(QMainWindow):
         self.xbee.on_error.connect(self.serial_error_handler)
         self.xbee.on_open.connect(self.serial_open_handler)
         self.xbee.on_close.connect(self.serial_close_handler)
+        self.xbee.on_data.connect(self.serial_data_handler)
 
         # Tabs
         self.tabs = QTabWidget()
@@ -130,6 +131,9 @@ class MainWindow(QMainWindow):
                                 "padding-top: -12px;"
                                 "margin-bottom: 6px;"
                                 "margin-bottom: 6px;"
+                                "}"
+                                "QTabWidget::tab-bar {"
+                                "alignment: center;"
                                 "}")
         self.root_layout.addWidget(self.tabs)
 
@@ -518,6 +522,17 @@ class MainWindow(QMainWindow):
         self.state.waiting_for_handshake = False
         self.serial_connect_button.setText("Connect")
 
+    # * Serial Data Recieve
+    def serial_data_handler(self, data: dict):
+        logger.trace(f"Received packet: {data}")
+        command: str = data["rf_data"].decode("utf-8").split("=", 1)[0]
+        value: str = data["rf_data"].decode("utf-8").split("=", 1)[1]
+        match command:
+            case "connection.handshake.end":
+                if value == f"DC_{self.state.id}":
+                    self.state.waiting_for_handshake = False
+                    self.statusBar().showMessage("Connection successful")
+
     def open_connection(self):
         if self.state.connected:
             self.end_communication()
@@ -528,6 +543,7 @@ class MainWindow(QMainWindow):
         self.begin_handshake()
 
     def end_communication(self):
+        self.xbee.broadcast(f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc")
         self.xbee.close()
         logger.info("Communication ended")
         self.statusBar().showMessage("Connection ended")
@@ -538,7 +554,7 @@ class MainWindow(QMainWindow):
 
     def handshake_timeout_handler(self):
         if self.state.waiting_for_handshake:
-            self.xbee.broadcast(f"connection.desktopclient.connect=DC_{self.state.id}|{__version__}|kevinbot.dc")
+            self.xbee.broadcast(f"connection.connect=DC_{self.state.id}|{__version__}|kevinbot.dc")
         else:
             self.handshake_timer.stop()
 
@@ -624,7 +640,9 @@ def controller_backend(): # pragma: no cover
 def main(app: QApplication | None = None):
     # Log queue and ansi2html converter
     dc_log_queue = queue.Queue()
-    logger.add(dc_log_queue.put, colorize=True)
+    logger.remove()
+    logger.add(sys.stdout, colorize=True, level=0)
+    logger.add(dc_log_queue.put, colorize=True, level=0)
 
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
@@ -638,6 +656,7 @@ def main(app: QApplication | None = None):
     if not app:
         app = QApplication(sys.argv)
         app.setApplicationVersion(__version__)
+        app.setWindowIcon(QIcon("assets/icons/icon.svg"))
         app.setApplicationName("Kevinbot Desktop Client")
     MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")

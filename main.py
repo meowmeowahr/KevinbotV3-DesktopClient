@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
                              self.settings.value("window/height", type=int)) # type: ignore
 
         # Theme
-        theme = self.settings.value("window/theme", "dark")
+        theme = self.settings.value("window/theme", "dark", type=str)
         if theme == "dark":
             qtd.setup_theme("dark", additional_qss="#warning_bar_text{color: #050505;}")
             qta.dark(app)

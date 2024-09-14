@@ -137,7 +137,7 @@ class ControllerManagerWidget(QWidget):
             ids.append(self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)))
         return ids + [None] * max(0, self.slots - len(ids))
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     class ExampleWindow(QWidget):
         def __init__(self):
             super().__init__()

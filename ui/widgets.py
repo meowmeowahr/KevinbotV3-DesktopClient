@@ -236,8 +236,8 @@ class AuthorWidget(QFrame):
     def author_website(self, website: str) -> None:
         self._author_website = website
 
-    def open_website(self) -> None:
+    def open_website(self) -> None: # pragma: no cover
         QDesktopServices.openUrl(QUrl(self._author_website))
 
-    def open_email(self) -> None:
+    def open_email(self) -> None: # pragma: no cover
         QDesktopServices.openUrl(QUrl(f"mailto:{self._author_email}"))

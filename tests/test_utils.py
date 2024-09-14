@@ -6,7 +6,7 @@ Unit tests for UI utils
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QTabWidget
 
-from ui.util import add_tabs, rotate_icon
+from ui.util import add_tabs, rotate_icon, initials
 
 
 def test_tab_generator(qtbot):
@@ -24,3 +24,7 @@ def test_icon_rotate(qtbot):
     icon = QIcon()
 
     assert rotate_icon(icon, 90).isNull() and rotate_icon(icon, -90).isNull()
+
+def test_initials():
+    assert initials("John Doe") == "JD"
+    assert initials("john doe") == "JD"

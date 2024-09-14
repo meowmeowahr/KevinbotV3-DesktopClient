@@ -3,6 +3,7 @@ import sys
 import platform
 import threading
 from typing import Tuple
+from dataclasses import dataclass
 
 from loguru import logger
 
@@ -32,6 +33,11 @@ __authors__ = [
     {"name": "Kevin Ahr", "email": "meowmeowahr@gmail.com", "website": "https://github.com/meowmeowahr", "title": "Primary Developer"},
 ]
 
+@dataclass
+class StateManager:
+    connected: bool = False
+    waiting_for_handshake: bool = False
+
 
 class MainWindow(QMainWindow):
     left_stick_update = Signal(pyglet.input.Controller, float, float)
@@ -45,6 +51,9 @@ class MainWindow(QMainWindow):
         self.dc_log_queue = dc_log_queue
         self.log_converter = ansi2html.Ansi2HTMLConverter()
         self.log_converter.scheme = "osx"
+
+        # State Manager
+        self.state = StateManager()
 
         # Settings Manager
         self.settings = QSettings("meowmeowahr", "KevinbotDesktopClient", self)
@@ -99,6 +108,7 @@ class MainWindow(QMainWindow):
         )
         self.xbee.on_error.connect(self.serial_error_handler)
         self.xbee.on_open.connect(self.serial_open_handler)
+        self.xbee.on_close.connect(self.serial_close_handler)
 
         # Tabs
         self.tabs = QTabWidget()
@@ -441,6 +451,7 @@ class MainWindow(QMainWindow):
 
         return layout
 
+    # Logging
     def update_logs(self, log_area: QTextEdit):
         for _ in range(self.dc_log_queue.qsize()):
             log_area.append(self.log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + self.dc_log_queue.get().strip()))
@@ -458,6 +469,7 @@ class MainWindow(QMainWindow):
                 else:
                     file.write(log_area.toPlainText())
 
+    # Serial
     def reload_ports(self):
         previous_port = self.port_combo.currentText()
         self.port_combo.clear()
@@ -469,15 +481,14 @@ class MainWindow(QMainWindow):
             self.serial_connect_button.setEnabled(False)
         else:
             self.serial_connect_button.setEnabled(True)
-
-    def set_theme(self, theme: str):
-        self.settings.setValue("window/theme", theme)
-
+    
     def set_hide_sys_ports(self, hide: bool):
         self.settings.setValue("comm/hide_sys_ports", hide)
         self.reload_ports()
 
     def serial_error_handler(self, error: str):
+        self.state.connected = False
+
         logger.error(f"Serial error: {error}")
 
         msg = QErrorMessage(self)
@@ -486,10 +497,29 @@ class MainWindow(QMainWindow):
         msg.exec()
 
     def serial_open_handler(self):
+        self.state.connected = True
         self.serial_connect_button.setText("Disconnect")
 
         logger.success("Serial port opened")
 
+    def serial_close_handler(self):
+        logger.debug("Serial port closed")
+        self.state.connected = False
+        self.state.waiting_for_handshake = False
+        self.serial_connect_button.setText("Connect")
+
+    def open_connection(self):
+        if self.state.connected:
+            self.end_communication()
+            return
+        self.xbee.open()
+        self.state.waiting_for_handshake = True      
+
+    def end_communication(self):
+        self.xbee.close()
+        logger.info("Communication ended")
+
+    # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):
         controllers.map_stick(controller, self.controller_stick_action)
         logger.success(f"Controller connected: {controller.name}")
@@ -502,6 +532,7 @@ class MainWindow(QMainWindow):
             self.left_stick_update.emit(controller, xvalue, yvalue)
         elif controller == self.controller_manager.get_controllers()[0] and stick == "rightstick":
             self.right_stick_update.emit(controller, xvalue, yvalue)
+    
     def update_left_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
         if controller != self.controller_manager.get_controllers()[0]:
             return
@@ -530,6 +561,10 @@ class MainWindow(QMainWindow):
               symbolBrush=qtg.mkBrush(0, 0, 255, 255),
               symbolSize=8)
 
+    # Misc
+    def set_theme(self, theme: str):
+        self.settings.setValue("window/theme", theme)
+
     def closeEvent(self, event: QCloseEvent) -> None:
         self.end_communication()
         self.settings.setValue("window/x", self.geometry().x())
@@ -538,17 +573,6 @@ class MainWindow(QMainWindow):
             self.settings.setValue("window/width", self.geometry().width())
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
-
-    def open_connection(self):
-        if self.xbee.is_open():
-            self.end_communication()
-            return
-        self.xbee.open()        
-
-    def end_communication(self):
-        self.xbee.close()
-        self.serial_connect_button.setText("Connect")
-        logger.info("Communication ended")
 
 def controller_backend(): # pragma: no cover
     try:

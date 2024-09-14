@@ -13,7 +13,6 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QRgba64, QColor
 
 import pyglet
-from pyglet.input.base import Controller # Controller backend
 
 from ui.delegates import NoFocusDelegate
 from .uuid_manager import UuidManager

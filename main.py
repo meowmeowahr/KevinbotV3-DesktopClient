@@ -382,7 +382,7 @@ class MainWindow(QMainWindow):
         icon.setPixmap(QPixmap("assets/icons/icon.svg"))
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon.setScaledContents(True)
-        icon.setFixedSize(QSize(192, 192))
+        icon.setFixedSize(QSize(160, 160))
         icon_layout.addWidget(icon)
 
         name_text = QLabel("Kevinbot Desktop Client")

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QA
     QScrollArea, QMessageBox
 
 import ansi2html
+import shortuuid
 
 import xbee
 
@@ -37,6 +38,7 @@ __authors__ = [
 class StateManager:
     connected: bool = False
     waiting_for_handshake: bool = False
+    id: str = ""
 
 
 class MainWindow(QMainWindow):
@@ -54,6 +56,7 @@ class MainWindow(QMainWindow):
 
         # State Manager
         self.state = StateManager()
+        self.state.id = shortuuid.uuid()
 
         # Settings Manager
         self.settings = QSettings("meowmeowahr", "KevinbotDesktopClient", self)
@@ -79,6 +82,9 @@ class MainWindow(QMainWindow):
 
         # Timers
         self.logger_timer = QTimer()
+        self.handshake_timer = QTimer()
+        self.handshake_timer.setInterval(1000)
+        self.handshake_timer.timeout.connect(self.handshake_timeout_handler)
 
         self.root_widget = QWidget()
         self.setCentralWidget(self.root_widget)
@@ -527,7 +533,13 @@ class MainWindow(QMainWindow):
 
     def begin_handshake(self):
         self.statusBar().showMessage("Waiting for handshake...")
-        self.xbee.broadcast(f"connection.remotes.add=DESKTOPCLIENT|{__version__}|kevinbot.dc")
+        self.handshake_timer.start()
+
+    def handshake_timeout_handler(self):
+        if self.state.waiting_for_handshake:
+            self.xbee.broadcast(f"connection.desktopclient.connect=DC_{self.state.id}|{__version__}|kevinbot.dc")
+        else:
+            self.handshake_timer.stop()
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):

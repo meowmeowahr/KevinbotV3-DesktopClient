@@ -12,10 +12,10 @@ import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal
-from PySide6.QtGui import QIcon, QCloseEvent, QPixmap
+from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
-    QScrollArea, QMessageBox
+    QScrollArea, QMessageBox, QSlider
 
 import ansi2html
 import shortuuid
@@ -202,6 +202,52 @@ class MainWindow(QMainWindow):
         hide_sys_details = QLabel("Hiding system ports will hide ports beginning with /dev/ttyS*")
         comm_layout.addWidget(hide_sys_details)
 
+        # Logging
+        logging_widget = QWidget()
+        toolbox.addItem(logging_widget, "Logging")
+
+        logging_layout = QVBoxLayout()
+        logging_widget.setLayout(logging_layout)
+
+        logging_warning = WarningBar("Restart required to apply logging level")
+        logging_layout.addWidget(logging_warning)
+
+        log_level_label = QLabel("Level")
+        logging_layout.addWidget(log_level_label)
+
+        log_level_map = {
+            0: 5,
+            1: 10,
+            2: 20,
+            3: 25,
+            4: 30,
+            5: 40,
+            6: 50,
+        }
+
+        log_level_names = {
+            5: "TRACE",
+            10: "DEBUG",
+            20: "INFO",
+            25: "SUCCESS",
+            30: "WARNING",
+            40: "ERROR",
+            50: "CRITICAL",
+        }
+
+        log_level = QSlider(Qt.Orientation.Horizontal)
+        log_level.setMinimum(0)
+        log_level.setMaximum(6)
+        log_level.setTickPosition(QSlider.TickPosition.TicksBelow)
+        log_level.setTickInterval(1)
+        log_level.setValue(list(log_level_map.keys())[list(log_level_map.values()).index(settings.value("logging/level", 2, type=int))]) # type: ignore
+        log_level.valueChanged.connect(lambda: set_log_level(log_level.value()))
+        logging_layout.addWidget(log_level)
+
+        log_level_name = QLabel(log_level_names[settings.value("logging/level", 2, type=int)]) # type: ignore
+        log_level_name.setFont(QFont(self.fontInfo().family(), 22))
+        logging_layout.addWidget(log_level_name)
+
         if settings.value("window/theme", "dark") == "dark":
             theme_dark.setChecked(True)
         elif settings.value("window/theme", "dark") == "light":
@@ -212,6 +258,10 @@ class MainWindow(QMainWindow):
         theme_dark.clicked.connect(lambda: self.set_theme("dark"))
         theme_light.clicked.connect(lambda: self.set_theme("light"))
         theme_system.clicked.connect(lambda: self.set_theme("system"))
+
+        def set_log_level(level: int):
+            settings.setValue("logging/level", log_level_map[level])
+            log_level_name.setText(log_level_names[log_level_map[level]])
 
         return layout
 
@@ -640,9 +690,11 @@ def controller_backend(): # pragma: no cover
 def main(app: QApplication | None = None):
     # Log queue and ansi2html converter
     dc_log_queue = queue.Queue()
+
+    settings = QSettings("meowmeowahr", "KevinbotDesktopClient")
     logger.remove()
-    logger.add(sys.stdout, colorize=True, level=0)
-    logger.add(dc_log_queue.put, colorize=True, level=0)
+    logger.add(sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int)) # type: ignore
+    logger.add(dc_log_queue.put, colorize=True, level=settings.value("logging/level", 20, type=int)) # type: ignore
 
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")

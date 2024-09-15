@@ -240,11 +240,11 @@ class MainWindow(QMainWindow):
         log_level.setMaximum(6)
         log_level.setTickPosition(QSlider.TickPosition.TicksBelow)
         log_level.setTickInterval(1)
-        log_level.setValue(list(log_level_map.keys())[list(log_level_map.values()).index(settings.value("logging/level", 2, type=int))]) # type: ignore
+        log_level.setValue(list(log_level_map.keys())[list(log_level_map.values()).index(settings.value("logging/level", 20, type=int))]) # type: ignore
         log_level.valueChanged.connect(lambda: set_log_level(log_level.value()))
         logging_layout.addWidget(log_level)
 
-        log_level_name = QLabel(log_level_names[settings.value("logging/level", 2, type=int)]) # type: ignore
+        log_level_name = QLabel(log_level_names[settings.value("logging/level", 20, type=int)]) # type: ignore
         log_level_name.setFont(QFont(self.fontInfo().family(), 22))
         logging_layout.addWidget(log_level_name)
 
@@ -710,6 +710,7 @@ def main(app: QApplication | None = None):
         app.setApplicationVersion(__version__)
         app.setWindowIcon(QIcon("assets/icons/icon.svg"))
         app.setApplicationName("Kevinbot Desktop Client")
+        print(app.font().family())
     MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
     app.exec()

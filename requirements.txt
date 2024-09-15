@@ -1,6 +1,7 @@
-# Logging
+# Misc
 loguru~=0.7.2
 ansi2html~=1.9.2
+shortuuid~=1.0.13
 
 # Interfaces
 pyglet~=2.0.17

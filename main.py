@@ -11,7 +11,7 @@ import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
-from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal
+from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
@@ -698,6 +698,17 @@ class MainWindow(QMainWindow):
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
 
+def parse(app):
+    """Parse the arguments and options of the given app object."""
+
+    parser = QCommandLineParser()
+
+    parser.addHelpOption()
+    parser.addVersionOption()
+
+    parser.process(app)
+
+    
 def controller_backend(): # pragma: no cover
     try:
         begin_controller_backend()
@@ -714,6 +725,17 @@ def main(app: QApplication | None = None):
     logger.add(sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int)) # type: ignore
     logger.add(dc_log_queue.put, colorize=True, level=settings.value("logging/level", 20, type=int)) # type: ignore
 
+    if not app:
+        app = QApplication(sys.argv)
+        app.setApplicationVersion(__version__)
+        app.setWindowIcon(QIcon("assets/icons/icon.svg"))
+        app.setApplicationName("Kevinbot Desktop Client")
+        app.setStyle("Fusion") # helps avoid problems in the future, make sure everyone is usign the same base
+
+
+    parse(app)
+
+
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
     logger.info(f"Using Python: {platform.python_version()}")
@@ -722,13 +744,6 @@ def main(app: QApplication | None = None):
 
     threading.Thread(target=controller_backend, daemon=True).start()
     logger.debug("Pyglet backend started in thread")
-
-    if not app:
-        app = QApplication(sys.argv)
-        app.setApplicationVersion(__version__)
-        app.setWindowIcon(QIcon("assets/icons/icon.svg"))
-        app.setApplicationName("Kevinbot Desktop Client")
-        app.setStyle("Fusion") # helps avoid problems in the future, make sure everyone is usign the same base
 
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Regular.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Medium.ttf")

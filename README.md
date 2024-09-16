@@ -5,7 +5,7 @@
 # Kevinbot v3 Desktop Client
 
 [![codecov](https://codecov.io/gh/meowmeowahr/KevinbotV3-DesktopClient/graph/badge.svg?token=7Y1GZD15MH)](https://codecov.io/gh/meowmeowahr/KevinbotV3-DesktopClient)
-[![Github Version](https://img.shields.io/github/v/release/meowmeowahr/KevinbotV3-DesktopClient?display_name=tag&include_prereleases&sort=semver)](https://github.com/meowmeowahr/KevinbotV3-DesktopClient/releases)
+[![Github Version](https://img.shields.io/github/v/release/meowmeowahr/KevinbotV3-DesktopClient?display_name=tag&include_prereleases)](https://github.com/meowmeowahr/KevinbotV3-DesktopClient/releases)
 
 > [!CAUTION]
 > This application is under heavy development and is not functional yet. Do not expect it to work!

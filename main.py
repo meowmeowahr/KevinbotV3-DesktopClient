@@ -606,16 +606,21 @@ class MainWindow(QMainWindow):
         self.begin_handshake()
 
     def end_communication(self):
-        self.xbee.broadcast(f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc")
-        self.xbee.close()
-        logger.info("Communication ended")
-        self.statusBar().showMessage("Connection ended")
+        if self.state.connected:
+            self.xbee.broadcast(f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc")
+            self.xbee.close()
+            logger.info("Communication ended")
+            self.statusBar().showMessage("Connection ended")
 
     def begin_handshake(self):
         self.statusBar().showMessage("Waiting for handshake...")
         self.handshake_timer.start()
 
     def handshake_timeout_handler(self):
+        if not self.state.connected:
+            self.handshake_timer.stop()
+            return
+
         if self.state.waiting_for_handshake:
             self.xbee.broadcast(f"connection.connect=DC_{self.state.id}|{__version__}|kevinbot.dc")
         else:

@@ -12,7 +12,7 @@ import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal
-from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont
+from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
     QScrollArea, QMessageBox, QSlider
@@ -72,13 +72,13 @@ class MainWindow(QMainWindow):
         # Theme
         theme = self.settings.value("window/theme", "dark", type=str)
         if theme == "dark":
-            qtd.setup_theme("dark", additional_qss="#warning_bar_text{color: #050505;}", custom_colors=constants.CUSTOM_COLORS_DARK)
+            qtd.setup_theme("dark", additional_qss="#warning_bar_text{color: #050505;} *{font-family: Roboto;}", custom_colors=constants.CUSTOM_COLORS_DARK)
             qta.dark(app)
         elif theme == "light":
             qtd.setup_theme("light")
             qta.light(app)
         else:
-            qtd.setup_theme("auto")
+            qtd.setup_theme("auto", additional_qss="#warning_bar_text{color: #050505;}", custom_colors=constants.CUSTOM_COLORS_DARK)
 
         # Timers
         self.logger_timer = QTimer()
@@ -122,17 +122,18 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(36, 36))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
-        self.tabs.setStyleSheet("QTabWidget::pane {"
+        self.tabs.setObjectName("root_tabs")
+        self.tabs.setStyleSheet("#root_tabs::pane {"
                                 "border-right: none;"
                                 "border-top: none;"
                                 "border-bottom: none;"
                                 "border-radius: 0px; }"
-                                "QTabWidget > QTabBar::tab {"
+                                "#root_tabs > QTabBar::tab {"
                                 "padding-top: -12px;"
                                 "margin-bottom: 6px;"
                                 "margin-bottom: 6px;"
                                 "}"
-                                "QTabWidget::tab-bar {"
+                                "#root_tabs::tab-bar {"
                                 "alignment: center;"
                                 "}")
         self.root_layout.addWidget(self.tabs)
@@ -506,19 +507,31 @@ class MainWindow(QMainWindow):
 
         # License
 
-        license_viewer = QPlainTextEdit()
-        
-        with open("LICENSE", "r") as file:
-            license_viewer.setPlainText(file.read())
+        licenses_tabs = QTabWidget()
+        licenses_tabs.setContentsMargins(100, 100, 100, 100)
 
-        tabs.addTab(license_viewer, "License", qta.icon("mdi6.gavel"))
+        for license in [
+            ("Desktop Client", "LICENSE"),
+            ("Roboto Font", "assets/fonts/Roboto/LICENSE.txt"),
+            ("JetBrains Mono Font", "assets/fonts/JetBrains_Mono/OFL.txt"),
+        ]:
+            
+
+            license_viewer = QPlainTextEdit()
+            with open(license[1], "r") as file:
+                license_viewer.setPlainText(file.read())
+            licenses_tabs.addTab(license_viewer, license[0])
+
+        tabs.addTab(licenses_tabs, "License", qta.icon("mdi6.gavel"))
 
         return layout
 
     # Logging
     def update_logs(self, log_area: QTextEdit):
         for _ in range(self.dc_log_queue.qsize()):
-            log_area.append(self.log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + self.dc_log_queue.get().strip()))
+            log_area.append(self.log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + self.dc_log_queue.get().strip())
+                            .replace("display: inline; white-space: pre-wrap; word-wrap: break-word;", # ? Is there a better way to do this?
+                                     "display: inline; white-space: pre-wrap; word-wrap: break-word; font-family: JetBrains Mono;"))
 
     def export_logs(self, log_area: QTextEdit):
         name = QFileDialog.getSaveFileName(self,
@@ -710,7 +723,13 @@ def main(app: QApplication | None = None):
         app.setApplicationVersion(__version__)
         app.setWindowIcon(QIcon("assets/icons/icon.svg"))
         app.setApplicationName("Kevinbot Desktop Client")
-        print(app.font().family())
+        app.setStyle("Fusion") # helps avoid problems in the future, make sure everyone is usign the same base
+
+    QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Regular.ttf")
+    QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Medium.ttf")
+    QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Bold.ttf")
+    QFontDatabase.addApplicationFont("assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf")
+
     MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
     app.exec()

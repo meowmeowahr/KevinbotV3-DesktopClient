@@ -12,10 +12,10 @@ import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser
-from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
+from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase, QColor
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
-    QScrollArea, QMessageBox, QSlider
+    QScrollArea, QMessageBox, QSlider, QFrame
 
 import ansi2html
 import shortuuid
@@ -23,7 +23,7 @@ import shortuuid
 import xbee
 
 from ui.util import add_tabs
-from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget
+from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
 from components import controllers, ControllerManagerWidget, begin_controller_backend
 from components.xbee import XBeeManager
 
@@ -147,11 +147,97 @@ class MainWindow(QMainWindow):
         ]
         self.main, self.connection_widget, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
 
+        # * Main Tab
+        self.main_layout = QVBoxLayout()
+        self.main.setLayout(self.main_layout)
+
+        self.main.setStyleSheet(
+            "#enable_button, #disable_button, #estop_button {"
+            "font-size: 24px;"
+            "font-weight: bold;"
+            "color: #212121;"
+            "}"
+            "#enable_button {"
+            "background-color: #00C853;"
+            "}"
+            "#disable_button {"
+            "background-color: #EF5350;"
+            "}"
+            "#estop_button {"
+            "background-color: #FF9722;"
+            "}"
+        )
+
+        self.main_layout.addStretch()
+
+        # * State Bar
+        self.state_bar = QHBoxLayout()
+        self.main_layout.addLayout(self.state_bar)
+
+        self.state_bar.addStretch()
+
+        self.enable_button = QPushButton("Enable".upper())
+        self.enable_button.setObjectName("enable_button")
+        self.enable_button.setFixedSize(QSize(200, 64))
+        self.state_bar.addWidget(self.enable_button)
+
+        self.disable_button = QPushButton("Disable".upper())
+        self.disable_button.setObjectName("disable_button")
+        self.disable_button.setFixedSize(QSize(200, 64))
+        self.state_bar.addWidget(self.disable_button)
+
+        self.state_bar.addStretch()
+
+        self.estop_button = QPushButton("E-Stop".upper())
+        self.estop_button.setObjectName("estop_button")
+        self.estop_button.setFixedSize(QSize(340, 64))
+        self.state_bar.addWidget(self.estop_button)
+
+        self.state_bar.addStretch()
+
+        self.indicators_grid = QGridLayout()
+        self.state_bar.addLayout(self.indicators_grid)
+
+        self.serial_indicator_led = ColorBlock()
+        self.serial_indicator_led.set_color("#f44336")
+        self.indicators_grid.addWidget(self.serial_indicator_led, 0, 0)
+
+        self.wifi_indicator_led = ColorBlock()
+        self.wifi_indicator_led.set_color("#f44336")
+        self.indicators_grid.addWidget(self.wifi_indicator_led, 1, 0)
+
+        self.controller_led = ColorBlock()
+        self.controller_led.set_color("#f44336")
+        self.indicators_grid.addWidget(self.controller_led, 2, 0)
+
+        self.serial_indicator_label = QLabel("Serial")
+        self.indicators_grid.addWidget(self.serial_indicator_label, 0, 1)
+
+        self.wifi_indicator_label = QLabel("Wi-Fi")
+        self.indicators_grid.addWidget(self.wifi_indicator_label, 1, 1)
+
+        self.controller_indicator_label = QLabel("Controller")
+        self.indicators_grid.addWidget(self.controller_indicator_label, 2, 1)
+
+        self.state_label = QLabel("No Communications")
+        self.state_label.setFont(QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold))
+        self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.state_label)
+
+        hline = QFrame()
+        hline.setFrameShape(QFrame.Shape.HLine)
+        hline.setFrameShadow(QFrame.Shadow.Sunken)
+        hline.setFixedHeight(2)
+        self.main_layout.addWidget(hline)
+
         self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.debug.setLayout(self.debug_layout(self.settings))
         self.comm_layout, self.port_combo, self.serial_connect_button, self.stick_graph_left, self.stick_graph_right = self.connection_layout(self.settings)
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
+
+        # * End Main Layout
+        self.main_layout.addStretch()
 
         # Status Bar
         self.statusBar().showMessage("Ready")
@@ -576,14 +662,17 @@ class MainWindow(QMainWindow):
     def serial_open_handler(self):
         self.state.connected = True
         self.serial_connect_button.setText("Disconnect")
+        self.serial_indicator_led.set_color("#4caf50")
 
         logger.success("Serial port opened")
 
     def serial_close_handler(self):
-        logger.debug("Serial port closed")
         self.state.connected = False
         self.state.waiting_for_handshake = False
         self.serial_connect_button.setText("Connect")
+        self.serial_indicator_led.set_color("#f44336")
+
+        logger.debug("Serial port closed")
 
     # * Serial Data Recieve
     def serial_data_handler(self, data: dict):

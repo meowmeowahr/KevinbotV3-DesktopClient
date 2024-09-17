@@ -8,6 +8,7 @@ from PySide6.QtGui import QMouseEvent, QFont, QDesktopServices, QResizeEvent
 import qtawesome as qta
 
 from ui.util import initials as str2initials
+from ui.util import rgb_to_hex as _rgb2hex
 
 class Severity(Enum):
     WARN = 0
@@ -241,3 +242,30 @@ class AuthorWidget(QFrame):
 
     def open_email(self) -> None: # pragma: no cover
         QDesktopServices.openUrl(QUrl(f"mailto:{self._author_email}"))
+
+class ColorBlock(QFrame):
+    """
+    A simple widget ot show a single color
+    """
+
+    def __init__(self) -> None:
+        super(ColorBlock, self).__init__()
+
+        self.setFrameShape(QFrame.Shape.Box)
+        self.setMinimumWidth(24)
+        self.setMinimumHeight(18)
+
+        self.setMaximumSize(128, 128)
+
+    def set_color(self, color: str) -> None:
+        """
+        Sets the color of the widget
+        """
+        self.setStyleSheet(f"background-color: {color};")
+
+    def set_rgb(self, rgb):
+        """
+        Sets the color of the widget in (r, g, b)
+        """
+        color_str = _rgb2hex(rgb)
+        self.setStyleSheet(f"background-color: #{color_str};")

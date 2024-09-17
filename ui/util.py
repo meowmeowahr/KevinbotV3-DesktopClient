@@ -32,3 +32,6 @@ def initials(phrase):
     for i in range(len(words)):
         result += words[i][0].upper()
     return result
+
+def rgb_to_hex(rgb):
+    return "%02x%02x%02x" % tuple(rgb)

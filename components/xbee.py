@@ -11,6 +11,7 @@ class XBeeManager(QObject):
     # Define signals
     on_data = Signal(dict)
     on_error = Signal(str)
+    on_reject = Signal()
     on_open = Signal()
     on_close = Signal()
 
@@ -100,6 +101,7 @@ class XBeeManager(QObject):
                 self.xbee.send("tx", dest_addr=b"\x00\x00", data=bytes("{}\n".format(message), "utf-8"))
                 logger.trace(f"Broadcasted message: {message}")
             else:
+                self.on_reject.emit()
                 logger.warning(f"Cannot broadcast message, {message}: XBee not connected")
         except Exception as e:
             self.on_error.emit(f"Error broadcasting message: {repr(e)}")

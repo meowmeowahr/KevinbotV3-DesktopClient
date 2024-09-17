@@ -12,7 +12,7 @@ import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
 from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser
-from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase, QColor
+from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
     QScrollArea, QMessageBox, QSlider, QFrame
@@ -38,6 +38,7 @@ __authors__ = [
 class StateManager:
     connected: bool = False
     waiting_for_handshake: bool = False
+    estop: bool = False
     id: str = ""
 
 
@@ -114,6 +115,7 @@ class MainWindow(QMainWindow):
             self.settings.value("comm/escaped", False, type=bool), # type: ignore
         )
         self.xbee.on_error.connect(self.serial_error_handler)
+        self.xbee.on_reject.connect(self.serial_reject_handler)
         self.xbee.on_open.connect(self.serial_open_handler)
         self.xbee.on_close.connect(self.serial_close_handler)
         self.xbee.on_data.connect(self.serial_data_handler)
@@ -191,6 +193,7 @@ class MainWindow(QMainWindow):
         self.estop_button = QPushButton("E-Stop".upper())
         self.estop_button.setObjectName("estop_button")
         self.estop_button.setFixedSize(QSize(340, 64))
+        self.estop_button.pressed.connect(self.request_estop)
         self.state_bar.addWidget(self.estop_button)
 
         self.state_bar.addStretch()
@@ -224,6 +227,10 @@ class MainWindow(QMainWindow):
         self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.state_label)
 
+        self.state_label_timer = QTimer()
+        self.state_label_timer.timeout.connect(self.pulse_state_label)
+        self.state_label_timer_runs = 0
+
         hline = QFrame()
         hline.setFrameShape(QFrame.Shape.HLine)
         hline.setFrameShadow(QFrame.Shadow.Sunken)
@@ -238,9 +245,6 @@ class MainWindow(QMainWindow):
 
         # * End Main Layout
         self.main_layout.addStretch()
-
-        # Status Bar
-        self.statusBar().showMessage("Ready")
 
         self.show()
 
@@ -612,6 +616,10 @@ class MainWindow(QMainWindow):
 
         return layout
 
+    # State
+    def request_estop(self):
+        self.xbee.broadcast("kevinbot.request.estop")
+
     # Logging
     def update_logs(self, log_area: QTextEdit):
         for _ in range(self.dc_log_queue.qsize()):
@@ -659,6 +667,26 @@ class MainWindow(QMainWindow):
         msg.showMessage(f"Serial Error: {error}")
         msg.exec()
 
+    def pulse_state_label(self):
+        if self.state_label_timer_runs == 5:
+            self.state_label_timer_runs = 0
+            self.state_label_timer.stop()
+            self.state_label.setStyleSheet("")
+            return
+        if self.state_label.styleSheet() == "color: #f44336;":
+            self.state_label.setStyleSheet("")
+        else:
+            self.state_label.setStyleSheet("color: #f44336;")
+        self.state_label_timer_runs += 1
+
+    def serial_reject_handler(self):
+        if not self.state.connected:
+            if not self.state_label_timer.isActive():
+                self.state_label_timer.start(100)
+        else:
+            logger.error("Something went seriously wrong, causing a command to be rejected")
+
+
     def serial_open_handler(self):
         self.state.connected = True
         self.serial_connect_button.setText("Disconnect")
@@ -673,23 +701,34 @@ class MainWindow(QMainWindow):
         self.serial_indicator_led.set_color("#f44336")
 
         logger.debug("Serial port closed")
+        
+        if not self.state.estop:
+            self.state_label.setText("No Communications")
 
     # * Serial Data Recieve
     def serial_data_handler(self, data: dict):
         logger.trace(f"Received packet: {data}")
         command: str = data["rf_data"].decode("utf-8").split("=", 1)[0]
-        value: str = data["rf_data"].decode("utf-8").split("=", 1)[1]
+        if len(data["rf_data"].decode("utf-8").split("=", 1)) > 1:
+            value: str | None = data["rf_data"].decode("utf-8").split("=", 1)[1]
+        else:
+            value = None
+
         match command:
             case "connection.handshake.end":
                 if value == f"DC_{self.state.id}":
                     self.state.waiting_for_handshake = False
-                    self.statusBar().showMessage("Connection successful")
+                    self.state_label.setText("Robot Connected")
+            case "system.estop":
+                self.state.estop = True
+                self.state_label.setText("Emergency Stopped")
+                self.xbee.close()
+
 
     def open_connection(self):
         if self.state.connected:
             self.end_communication()
             return
-        self.statusBar().showMessage("Opening connection...")
         self.xbee.open()
         self.state.waiting_for_handshake = True      
         self.begin_handshake()
@@ -699,10 +738,9 @@ class MainWindow(QMainWindow):
             self.xbee.broadcast(f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc")
             self.xbee.close()
             logger.info("Communication ended")
-            self.statusBar().showMessage("Connection ended")
 
     def begin_handshake(self):
-        self.statusBar().showMessage("Waiting for handshake...")
+        self.state_label.setText("Awaiting Handshake")
         self.handshake_timer.start()
 
     def handshake_timeout_handler(self):

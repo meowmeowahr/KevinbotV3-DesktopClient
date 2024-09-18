@@ -14,5 +14,5 @@ def test_main_window(qtbot):
         win = main.MainWindow(app, queue.Queue())
         assert win.isVisible()
         win.close()
-    else:
+    else: # pragma: no cover
         pytest.fail("No running QApplication instance found")

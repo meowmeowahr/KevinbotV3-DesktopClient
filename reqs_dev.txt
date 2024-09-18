@@ -3,3 +3,6 @@ vgamepad~=0.1.0
 
 pytest~=8.3.3
 pytest-qt~=4.4.0
+pytest-cov~=5.0.0
+
+coverage~=7.6.1

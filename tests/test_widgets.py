@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QResizeEvent
 
-from ui.widgets import WarningBar, Severity, CustomTabWidget, Profile, AuthorWidget
+from ui.widgets import WarningBar, Severity, CustomTabWidget, Profile, AuthorWidget, ColorBlock
 
 def test_warning_bar_basic(qtbot):
     bar = WarningBar("test", closeable=False)
@@ -59,3 +59,10 @@ def test_author_widget(qtbot):
     assert author_widget.author_website == "https://example.com"
     assert author_widget.author_name == "John Doe"
     assert author_widget.author_title == "Software Developer"
+
+def test_color_block(qtbot):
+    color_block = ColorBlock()
+    color_block.set_rgb((255, 255, 127,))
+    assert color_block.styleSheet() == "background-color: #ffff7f;"
+    color_block.set_color("#f44336")
+    assert color_block.styleSheet() == "background-color: #f44336;"

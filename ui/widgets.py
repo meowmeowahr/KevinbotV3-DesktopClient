@@ -253,7 +253,7 @@ class ColorBlock(QFrame):
 
         self.setFrameShape(QFrame.Shape.Box)
         self.setMinimumWidth(24)
-        self.setMinimumHeight(18)
+        self.setMinimumHeight(10)
 
         self.setMaximumSize(128, 128)
 

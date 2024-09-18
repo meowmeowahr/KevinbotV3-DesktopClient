@@ -11,11 +11,12 @@ import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
-from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser
+from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser, QObject, \
+    QThreadPool
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
-    QScrollArea, QMessageBox, QSlider, QFrame
+    QScrollArea, QMessageBox, QSlider, QFrame, QLineEdit
 
 import ansi2html
 import shortuuid
@@ -24,6 +25,7 @@ import xbee
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
+
 from components import controllers, ControllerManagerWidget, begin_controller_backend
 from components.xbee import XBeeManager
 
@@ -39,7 +41,10 @@ class StateManager:
     connected: bool = False
     waiting_for_handshake: bool = False
     estop: bool = False
+    enabled: bool = False
     id: str = ""
+    tick_speed: float | None = None
+    robot_host: str = "http://kevinbot.local"
 
 
 class MainWindow(QMainWindow):
@@ -55,10 +60,6 @@ class MainWindow(QMainWindow):
         self.log_converter = ansi2html.Ansi2HTMLConverter()
         self.log_converter.scheme = "osx"
 
-        # State Manager
-        self.state = StateManager()
-        self.state.id = shortuuid.uuid()
-
         # Settings Manager
         self.settings = QSettings("meowmeowahr", "KevinbotDesktopClient", self)
 
@@ -69,6 +70,14 @@ class MainWindow(QMainWindow):
                              self.settings.value("window/y", type=int), # type: ignore
                              self.settings.value("window/width", type=int), # type: ignore
                              self.settings.value("window/height", type=int)) # type: ignore
+            
+        # State Manager
+        self.state = StateManager()
+        self.state.id = shortuuid.uuid()
+        logger.info(f"Desktop Client ID is {self.state.id}")
+
+        self.state.robot_host = self.settings.value("comm/host", "http://kevinbot.local", type=str) # type: ignore
+        logger.info(f"Robot Network Host: {self.state.robot_host}")
 
         # Theme
         theme = self.settings.value("window/theme", "dark", type=str)
@@ -205,22 +214,29 @@ class MainWindow(QMainWindow):
         self.serial_indicator_led.set_color("#f44336")
         self.indicators_grid.addWidget(self.serial_indicator_led, 0, 0)
 
-        self.wifi_indicator_led = ColorBlock()
-        self.wifi_indicator_led.set_color("#f44336")
-        self.indicators_grid.addWidget(self.wifi_indicator_led, 1, 0)
+        self.systick_indicator_led = ColorBlock()
+        self.systick_indicator_led.set_color("#f44336")
+        self.indicators_grid.addWidget(self.systick_indicator_led, 1, 0)
+
+        self.coretick_indicator_led = ColorBlock()
+        self.coretick_indicator_led.set_color("#f44336")
+        self.indicators_grid.addWidget(self.coretick_indicator_led, 2, 0)
 
         self.controller_led = ColorBlock()
         self.controller_led.set_color("#f44336")
-        self.indicators_grid.addWidget(self.controller_led, 2, 0)
+        self.indicators_grid.addWidget(self.controller_led, 3, 0)
 
         self.serial_indicator_label = QLabel("Serial")
         self.indicators_grid.addWidget(self.serial_indicator_label, 0, 1)
 
-        self.wifi_indicator_label = QLabel("Wi-Fi")
-        self.indicators_grid.addWidget(self.wifi_indicator_label, 1, 1)
+        self.systick_indicator_label = QLabel("Sys Tick")
+        self.indicators_grid.addWidget(self.systick_indicator_label, 1, 1)
+
+        self.coretick_indicator_led_label = QLabel("Core Tick")
+        self.indicators_grid.addWidget(self.coretick_indicator_led_label, 2, 1)
 
         self.controller_indicator_label = QLabel("Controller")
-        self.indicators_grid.addWidget(self.controller_indicator_label, 2, 1)
+        self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
 
         self.state_label = QLabel("No Communications")
         self.state_label.setFont(QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold))
@@ -285,13 +301,21 @@ class MainWindow(QMainWindow):
         comm_layout = QVBoxLayout()
         comm_widget.setLayout(comm_layout)
 
+        hide_sys_details = QLabel("Hiding system ports will hide ports beginning with /dev/ttyS*")
+        comm_layout.addWidget(hide_sys_details)
+
         hide_sys_ports = QCheckBox("Hide System Ports")
         hide_sys_ports.setChecked(settings.value("comm/hide_sys_ports", False, type=bool)) # type: ignore
         hide_sys_ports.clicked.connect(lambda: self.set_hide_sys_ports(hide_sys_ports.isChecked()))
         comm_layout.addWidget(hide_sys_ports)
 
-        hide_sys_details = QLabel("Hiding system ports will hide ports beginning with /dev/ttyS*")
-        comm_layout.addWidget(hide_sys_details)
+        address_details = QLabel("IP Address (preferred) or host to connect to")
+        comm_layout.addWidget(address_details)
+
+        host_input = QLineEdit()
+        host_input.setText(settings.value("comm/host", "http://kevinbot.local", type=str)) # type: ignore
+        host_input.textChanged.connect(lambda: self.set_host(host_input.text()))
+        comm_layout.addWidget(host_input)
 
         # Logging
         logging_widget = QWidget()
@@ -701,7 +725,7 @@ class MainWindow(QMainWindow):
         self.serial_indicator_led.set_color("#f44336")
 
         logger.debug("Serial port closed")
-        
+
         if not self.state.estop:
             self.state_label.setText("No Communications")
 
@@ -718,11 +742,24 @@ class MainWindow(QMainWindow):
             case "connection.handshake.end":
                 if value == f"DC_{self.state.id}":
                     self.state.waiting_for_handshake = False
-                    self.state_label.setText("Robot Connected")
+                    # There is no need to set the status label, since the handshake includes an enable message
             case "system.estop":
                 self.state.estop = True
                 self.state_label.setText("Emergency Stopped")
                 self.xbee.close()
+            case "kevinbot.enabled":
+                self.state.enabled = value in ["True", "true", "1", "on", "ON", "enabled", "ENABLED"]
+                self.state_label.setText("Robot Enabled" if self.state.enabled else "Robot Disabled")
+            case "system.tick.speed":
+                if not value: 
+                    return
+                
+                try:
+                    tick = float(value)
+                except ValueError:
+                    tick = None
+
+                self.state.tick_speed = tick
 
 
     def open_connection(self):
@@ -801,9 +838,12 @@ class MainWindow(QMainWindow):
               symbolBrush=qtg.mkBrush(0, 0, 255, 255),
               symbolSize=8)
 
-    # Misc
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
+
+    def set_host(self, host: str):
+        self.settings.setValue("comm/host", host)
+        self.state.robot_host = host
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self.state.connected:
@@ -824,6 +864,9 @@ class MainWindow(QMainWindow):
             self.settings.setValue("window/width", self.geometry().width())
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
+
+        # Kill app in case of frozen threads due to xbee being unplugged while connected
+        sys.exit() # ? There should be a better way to exit the application?
 
 def parse(app):
     """Parse the arguments and options of the given app object."""

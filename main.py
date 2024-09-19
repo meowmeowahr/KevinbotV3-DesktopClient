@@ -2,6 +2,7 @@ import queue
 import sys
 import platform
 import threading
+import time
 from typing import Tuple
 from dataclasses import dataclass
 
@@ -45,6 +46,8 @@ class StateManager:
     id: str = ""
     tick_speed: float | None = None
     robot_host: str = "http://kevinbot.local"
+    last_system_tick: float = time.time()
+    last_core_tick: float = time.time()
 
 
 class MainWindow(QMainWindow):
@@ -95,6 +98,11 @@ class MainWindow(QMainWindow):
         self.handshake_timer = QTimer()
         self.handshake_timer.setInterval(1500)
         self.handshake_timer.timeout.connect(self.handshake_timeout_handler)
+
+        self.tick_timer = QTimer()
+        self.tick_timer.setInterval(1000)
+        self.tick_timer.timeout.connect(self.tick_checker)
+        self.tick_timer.start()
 
         self.root_widget = QWidget()
         self.setCentralWidget(self.root_widget)
@@ -724,6 +732,9 @@ class MainWindow(QMainWindow):
         self.serial_connect_button.setText("Disconnect")
         self.serial_indicator_led.set_color("#4caf50")
 
+        self.state.last_system_tick = time.time()
+        self.state.last_core_tick = time.time()
+
         logger.success("Serial port opened")
 
     def serial_close_handler(self):
@@ -768,6 +779,10 @@ class MainWindow(QMainWindow):
                     tick = None
 
                 self.state.tick_speed = tick
+            case "system.uptime":
+                self.state.last_system_tick = time.time()
+            case "core.uptime":
+                self.state.last_core_tick = time.time()
 
 
     def open_connection(self):
@@ -797,6 +812,21 @@ class MainWindow(QMainWindow):
             self.xbee.broadcast(f"connection.connect=DC_{self.state.id}|{__version__}|kevinbot.dc")
         else:
             self.handshake_timer.stop()
+
+    # * Ticks
+    def tick_checker(self):
+        if self.state.tick_speed:
+            if time.time() - self.state.last_core_tick > self.state.tick_speed:
+                self.coretick_indicator_led.set_color("#f44336")
+            else:
+                self.coretick_indicator_led.set_color("#4caf50")
+            
+            if time.time() - self.state.last_system_tick > self.state.tick_speed:
+                self.systick_indicator_led.set_color("#f44336")
+            else:
+                self.systick_indicator_led.set_color("#4caf50")
+        else:
+            logger.warning("No tick speed set, skipping tick check")
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):

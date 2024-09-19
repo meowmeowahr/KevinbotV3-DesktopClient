@@ -190,11 +190,13 @@ class MainWindow(QMainWindow):
         self.enable_button = QPushButton("Enable".upper())
         self.enable_button.setObjectName("enable_button")
         self.enable_button.setFixedSize(QSize(200, 64))
+        self.enable_button.clicked.connect(lambda: self.request_enable(True))
         self.state_bar.addWidget(self.enable_button)
 
         self.disable_button = QPushButton("Disable".upper())
         self.disable_button.setObjectName("disable_button")
         self.disable_button.setFixedSize(QSize(200, 64))
+        self.disable_button.clicked.connect(lambda: self.request_enable(False))
         self.state_bar.addWidget(self.disable_button)
 
         self.state_bar.addStretch()
@@ -643,6 +645,9 @@ class MainWindow(QMainWindow):
     # State
     def request_estop(self):
         self.xbee.broadcast("kevinbot.request.estop")
+
+    def request_enable(self, enable: bool):
+        self.xbee.broadcast(f"kevinbot.request.enable={enable}")
 
     # Logging
     def update_logs(self, log_area: QTextEdit):

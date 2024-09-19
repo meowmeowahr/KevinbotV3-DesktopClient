@@ -104,6 +104,11 @@ class MainWindow(QMainWindow):
         self.tick_timer.timeout.connect(self.tick_checker)
         self.tick_timer.start()
 
+        self.controller_timer = QTimer()
+        self.controller_timer.setInterval(1000)
+        self.controller_timer.timeout.connect(self.controller_checker)
+        self.controller_timer.start()
+
         self.root_widget = QWidget()
         self.setCentralWidget(self.root_widget)
 
@@ -813,20 +818,28 @@ class MainWindow(QMainWindow):
         else:
             self.handshake_timer.stop()
 
-    # * Ticks
+    # * Background checks
     def tick_checker(self):
-        if self.state.tick_speed:
-            if time.time() - self.state.last_core_tick > self.state.tick_speed:
-                self.coretick_indicator_led.set_color("#f44336")
+        if self.state.connected:
+            if self.state.tick_speed:
+                if time.time() - self.state.last_core_tick > self.state.tick_speed:
+                    self.coretick_indicator_led.set_color("#f44336")
+                else:
+                    self.coretick_indicator_led.set_color("#4caf50")
+                
+                if time.time() - self.state.last_system_tick > self.state.tick_speed:
+                    self.systick_indicator_led.set_color("#f44336")
+                else:
+                    self.systick_indicator_led.set_color("#4caf50")
             else:
-                self.coretick_indicator_led.set_color("#4caf50")
-            
-            if time.time() - self.state.last_system_tick > self.state.tick_speed:
-                self.systick_indicator_led.set_color("#f44336")
-            else:
-                self.systick_indicator_led.set_color("#4caf50")
+                logger.warning("No tick speed set, skipping tick check")
+
+    def controller_checker(self):
+        if len(self.controller_manager.get_controller_ids()) > 0:
+            self.controller_led.set_color("#4caf50")
         else:
-            logger.warning("No tick speed set, skipping tick check")
+            self.controller_led.set_color("#f44336")
+
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):

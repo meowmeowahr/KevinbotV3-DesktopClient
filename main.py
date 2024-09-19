@@ -190,12 +190,14 @@ class MainWindow(QMainWindow):
         self.enable_button = QPushButton("Enable".upper())
         self.enable_button.setObjectName("enable_button")
         self.enable_button.setFixedSize(QSize(200, 64))
+        self.enable_button.setShortcut(Qt.Key.Key_Apostrophe)
         self.enable_button.clicked.connect(lambda: self.request_enable(True))
         self.state_bar.addWidget(self.enable_button)
 
         self.disable_button = QPushButton("Disable".upper())
         self.disable_button.setObjectName("disable_button")
         self.disable_button.setFixedSize(QSize(200, 64))
+        self.disable_button.setShortcut(Qt.Key.Key_Return)
         self.disable_button.clicked.connect(lambda: self.request_enable(False))
         self.state_bar.addWidget(self.disable_button)
 
@@ -204,6 +206,7 @@ class MainWindow(QMainWindow):
         self.estop_button = QPushButton("E-Stop".upper())
         self.estop_button.setObjectName("estop_button")
         self.estop_button.setFixedSize(QSize(340, 64))
+        self.estop_button.setShortcut(Qt.Key.Key_Space)
         self.estop_button.pressed.connect(self.request_estop)
         self.state_bar.addWidget(self.estop_button)
 

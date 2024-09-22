@@ -12,8 +12,7 @@ import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
-from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser, QObject, \
-    QThreadPool
+from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
@@ -26,6 +25,7 @@ import xbee
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
+from ui.plots import BatteryGraph
 
 from components import controllers, ControllerManagerWidget, begin_controller_backend
 from components.xbee import XBeeManager
@@ -129,6 +129,13 @@ class MainWindow(QMainWindow):
         self.left_stick_update.connect(self.update_left_stick_visuals)
         self.right_stick_update.connect(self.update_right_stick_visuals)
 
+        # Drive
+        self.left_power = 0
+        self.right_power = 0
+
+        self.left_stick_update.connect(self.drive_left)
+        self.right_stick_update.connect(self.drive_right)
+
         # Communications
         self.xbee = XBeeManager(
             self.settings.value("comm/port", ""),
@@ -222,6 +229,30 @@ class MainWindow(QMainWindow):
         self.estop_button.setShortcut(Qt.Key.Key_Space)
         self.estop_button.pressed.connect(self.request_estop)
         self.state_bar.addWidget(self.estop_button)
+
+        self.state_bar.addStretch()
+
+        # Battery
+        self.battery_graphs = []
+        self.battery_volt_labels = []
+        for i in range(2):
+            graph = BatteryGraph()
+            graph.setFixedSize(QSize(100, 64))
+            self.battery_graphs.append(graph)
+
+            label = QLabel(f"Battery {i+1}")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            volt = QLabel("Unknown")
+            volt.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.battery_volt_labels.append(volt)
+
+            layout = QVBoxLayout()
+            layout.addWidget(graph)
+            layout.addWidget(label)
+            layout.addWidget(volt)
+
+            self.state_bar.addLayout(layout)
 
         self.state_bar.addStretch()
 
@@ -788,7 +819,41 @@ class MainWindow(QMainWindow):
                 self.state.last_system_tick = time.time()
             case "core.uptime":
                 self.state.last_core_tick = time.time()
+            case "bms.voltages":
+                if not value:
+                    return
+                
+                for index, i in enumerate(value.split(",")):
+                    self.battery_volt_labels[index].setText(f"{int(i)/10}v")
+                    self.battery_graphs[index].add(1/10)
 
+    # * Drive
+    def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
+        if not self.state.connected:
+            return
+        
+        if controller == self.controller_manager.get_controllers()[0]:
+            if round(self.left_power*100) == round(yvalue*100):
+                return
+            if abs(yvalue) > constants.CONTROLLER_DEADBAND:
+                self.left_power = yvalue
+            else:
+                self.left_power = 0
+            self.xbee.broadcast(f"drive={round(self.left_power*100)},{round(self.right_power*100)}")
+
+    def drive_right(self, controller: pyglet.input.Controller, xvalue, yvalue):
+        if not self.state.connected:
+            return
+        
+        if controller == self.controller_manager.get_controllers()[0]:
+            if round(self.right_power*100) == round(yvalue*100):
+                return
+            if abs(yvalue) > constants.CONTROLLER_DEADBAND:
+                self.right_power = yvalue
+            else:
+                self.right_power = 0
+            self.xbee.broadcast(f"drive={round(self.left_power*100)},{round(self.right_power*100)}")
+        
 
     def open_connection(self):
         if self.state.connected:

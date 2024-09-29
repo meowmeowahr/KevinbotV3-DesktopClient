@@ -825,7 +825,7 @@ class MainWindow(QMainWindow):
                 
                 for index, i in enumerate(value.split(",")):
                     self.battery_volt_labels[index].setText(f"{int(i)/10}v")
-                    self.battery_graphs[index].add(1/10)
+                    self.battery_graphs[index].add(int(i)/10)
 
     # * Drive
     def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):

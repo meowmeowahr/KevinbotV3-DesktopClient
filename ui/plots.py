@@ -5,7 +5,7 @@ class BatteryGraph(pg.PlotWidget):
         super().__init__()
 
         self.showGrid(x=False, y=True)
-        self.setYRange(0, 14)
+        self.setYRange(0, 20)
         self.hideButtons()
         self.setBackground("transparent")
         self.setMenuEnabled(False)

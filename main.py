@@ -752,6 +752,8 @@ class MainWindow(QMainWindow):
         msg.showMessage(f"Serial Error: {error}")
         msg.exec()
 
+        self.state_label.setText("No Communications")
+
     def pulse_state_label(self):
         if self.state_label_timer_runs == 5:
             self.state_label_timer_runs = 0
@@ -879,8 +881,9 @@ class MainWindow(QMainWindow):
             logger.info("Communication ended")
 
     def begin_handshake(self):
-        self.state_label.setText("Awaiting Handshake")
-        self.handshake_timer.start()
+        if self.state.connected:
+            self.state_label.setText("Awaiting Handshake")
+            self.handshake_timer.start()
 
     def handshake_timeout_handler(self):
         if not self.state.connected:

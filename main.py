@@ -16,7 +16,7 @@ from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplicat
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
     QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
-    QScrollArea, QMessageBox, QSlider, QFrame, QLineEdit
+    QScrollArea, QMessageBox, QSlider, QFrame, QLineEdit, QToolButton
 
 import ansi2html
 import shortuuid
@@ -637,7 +637,7 @@ class MainWindow(QMainWindow):
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.addWidget(version)
 
-        qt_version = QLabel("PyQt Version: " + qVersion())
+        qt_version = QLabel("Qt Version: " + qVersion())
         qt_version.setStyleSheet(
             "font-size: 22px; font-weight: normal; font-family: Roboto;"
         )
@@ -686,6 +686,15 @@ class MainWindow(QMainWindow):
             licenses_tabs.addTab(license_viewer, license[0])
 
         tabs.addTab(licenses_tabs, "License", qta.icon("mdi6.gavel"))
+
+        aboutqt = QToolButton()
+        aboutqt.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        aboutqt.clicked.connect(QApplication.aboutQt)
+        aboutqt.setIconSize(tabs.icon_size)
+        aboutqt.setIcon(qta.icon("mdi6.code-block-tags"))
+        aboutqt.setText("About Qt")
+        tabs.tab_buttons.append(aboutqt)
+        tabs.tab_buttons_layout.addWidget(aboutqt)
 
         return layout
 

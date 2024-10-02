@@ -111,8 +111,8 @@ class MainWindow(QMainWindow):
                 self.settings.value("window/x", type=int),  # type: ignore
                 self.settings.value("window/y", type=int),  # type: ignore
                 self.settings.value("window/width", type=int),  # type: ignore
-                self.settings.value("window/height", type=int),
-            )  # type: ignore
+                self.settings.value("window/height", type=int), # type: ignore
+            )
 
         # State Manager
         self.state = StateManager()

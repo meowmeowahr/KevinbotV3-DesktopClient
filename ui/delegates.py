@@ -7,5 +7,5 @@ from PySide6.QtWidgets import QStyledItemDelegate, QStyle, QStyleOptionViewItem
 
 class NoFocusDelegate(QStyledItemDelegate):
     def paint(self, painter, option: QStyleOptionViewItem, index):
-        option.state = QStyle.StateFlag.State_Enabled # type: ignore
+        option.state = QStyle.StateFlag.State_Enabled  # type: ignore
         super(NoFocusDelegate, self).paint(painter, option, index)

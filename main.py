@@ -12,11 +12,43 @@ import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import pyqtgraph as qtg
-from PySide6.QtCore import QSize, QSettings, qVersion, Qt, QTimer, QCoreApplication, Signal, QCommandLineParser
+from PySide6.QtCore import (
+    QSize,
+    QSettings,
+    qVersion,
+    Qt,
+    QTimer,
+    QCoreApplication,
+    Signal,
+    QCommandLineParser,
+)
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QApplication, QTabWidget, QToolBox, QLabel, \
-    QRadioButton, QSplitter, QTextEdit, QPushButton, QFileDialog, QGridLayout, QComboBox, QCheckBox, QErrorMessage, QPlainTextEdit, \
-    QScrollArea, QMessageBox, QSlider, QFrame, QLineEdit, QToolButton
+from PySide6.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QMainWindow,
+    QWidget,
+    QApplication,
+    QTabWidget,
+    QToolBox,
+    QLabel,
+    QRadioButton,
+    QSplitter,
+    QTextEdit,
+    QPushButton,
+    QFileDialog,
+    QGridLayout,
+    QComboBox,
+    QCheckBox,
+    QErrorMessage,
+    QPlainTextEdit,
+    QScrollArea,
+    QMessageBox,
+    QSlider,
+    QFrame,
+    QLineEdit,
+    QToolButton,
+)
 
 import ansi2html
 import shortuuid
@@ -34,8 +66,14 @@ import constants
 
 __version__ = "0.0.0"
 __authors__ = [
-    {"name": "Kevin Ahr", "email": "meowmeowahr@gmail.com", "website": "https://github.com/meowmeowahr", "title": "Primary Developer"},
+    {
+        "name": "Kevin Ahr",
+        "email": "meowmeowahr@gmail.com",
+        "website": "https://github.com/meowmeowahr",
+        "title": "Primary Developer",
+    },
 ]
+
 
 @dataclass
 class StateManager:
@@ -69,29 +107,39 @@ class MainWindow(QMainWindow):
         # Remembered position
         if self.settings.contains("window/x"):
             # noinspection PyTypeChecker
-            self.setGeometry(self.settings.value("window/x", type=int), # type: ignore
-                             self.settings.value("window/y", type=int), # type: ignore
-                             self.settings.value("window/width", type=int), # type: ignore
-                             self.settings.value("window/height", type=int)) # type: ignore
-            
+            self.setGeometry(
+                self.settings.value("window/x", type=int),  # type: ignore
+                self.settings.value("window/y", type=int),  # type: ignore
+                self.settings.value("window/width", type=int),  # type: ignore
+                self.settings.value("window/height", type=int),
+            )  # type: ignore
+
         # State Manager
         self.state = StateManager()
         self.state.id = shortuuid.uuid()
         logger.info(f"Desktop Client ID is {self.state.id}")
 
-        self.state.robot_host = self.settings.value("comm/host", "http://kevinbot.local", type=str) # type: ignore
+        self.state.robot_host = self.settings.value("comm/host", "http://kevinbot.local", type=str)  # type: ignore
         logger.info(f"Robot Network Host: {self.state.robot_host}")
 
         # Theme
         theme = self.settings.value("window/theme", "dark", type=str)
         if theme == "dark":
-            qtd.setup_theme("dark", additional_qss="#warning_bar_text{color: #050505;} *{font-family: Roboto;}", custom_colors=constants.CUSTOM_COLORS_DARK)
+            qtd.setup_theme(
+                "dark",
+                additional_qss="#warning_bar_text{color: #050505;} *{font-family: Roboto;}",
+                custom_colors=constants.CUSTOM_COLORS_DARK,
+            )
             qta.dark(app)
         elif theme == "light":
             qtd.setup_theme("light")
             qta.light(app)
         else:
-            qtd.setup_theme("auto", additional_qss="#warning_bar_text{color: #050505;}", custom_colors=constants.CUSTOM_COLORS_DARK)
+            qtd.setup_theme(
+                "auto",
+                additional_qss="#warning_bar_text{color: #050505;}",
+                custom_colors=constants.CUSTOM_COLORS_DARK,
+            )
 
         # Timers
         self.logger_timer = QTimer()
@@ -123,7 +171,9 @@ class MainWindow(QMainWindow):
             controllers.map_stick(controller, self.controller_stick_action)
 
         self.controller_manager.on_connected.connect(self.controller_connected_handler)
-        self.controller_manager.on_disconnected.connect(self.controller_disconnected_handler)
+        self.controller_manager.on_disconnected.connect(
+            self.controller_disconnected_handler
+        )
         self.controller_manager.on_refresh.connect(self.controller_refresh_handler)
 
         self.left_stick_update.connect(self.update_left_stick_visuals)
@@ -139,9 +189,9 @@ class MainWindow(QMainWindow):
         # Communications
         self.xbee = XBeeManager(
             self.settings.value("comm/port", ""),
-            self.settings.value("comm/baud", 921600, type=int), # type: ignore
-            self.settings.value("comm/fc", False, type=bool), # type: ignore
-            self.settings.value("comm/escaped", False, type=bool), # type: ignore
+            self.settings.value("comm/baud", 921600, type=int),  # type: ignore
+            self.settings.value("comm/fc", False, type=bool),  # type: ignore
+            self.settings.value("comm/escaped", False, type=bool),  # type: ignore
         )
         self.xbee.on_error.connect(self.serial_error_handler)
         self.xbee.on_reject.connect(self.serial_reject_handler)
@@ -154,19 +204,21 @@ class MainWindow(QMainWindow):
         self.tabs.setIconSize(QSize(36, 36))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
         self.tabs.setObjectName("root_tabs")
-        self.tabs.setStyleSheet("#root_tabs::pane {"
-                                "border-right: none;"
-                                "border-top: none;"
-                                "border-bottom: none;"
-                                "border-radius: 0px; }"
-                                "#root_tabs > QTabBar::tab {"
-                                "padding-top: -12px;"
-                                "margin-bottom: 6px;"
-                                "margin-bottom: 6px;"
-                                "}"
-                                "#root_tabs::tab-bar {"
-                                "alignment: center;"
-                                "}")
+        self.tabs.setStyleSheet(
+            "#root_tabs::pane {"
+            "border-right: none;"
+            "border-top: none;"
+            "border-bottom: none;"
+            "border-radius: 0px; }"
+            "#root_tabs > QTabBar::tab {"
+            "padding-top: -12px;"
+            "margin-bottom: 6px;"
+            "margin-bottom: 6px;"
+            "}"
+            "#root_tabs::tab-bar {"
+            "alignment: center;"
+            "}"
+        )
         self.root_layout.addWidget(self.tabs)
 
         tabs: list[Tuple[str, QIcon]] = [
@@ -176,7 +228,13 @@ class MainWindow(QMainWindow):
             ("Settings", qta.icon("mdi6.cog")),
             ("About", qta.icon("mdi6.information-slab-circle")),
         ]
-        self.main, self.connection_widget, self.debug, self.settings_widget, self.about_widget = add_tabs(self.tabs, tabs)
+        (
+            self.main,
+            self.connection_widget,
+            self.debug,
+            self.settings_widget,
+            self.about_widget,
+        ) = add_tabs(self.tabs, tabs)
 
         # * Main Tab
         self.main_layout = QVBoxLayout()
@@ -288,7 +346,9 @@ class MainWindow(QMainWindow):
         self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
 
         self.state_label = QLabel("No Communications")
-        self.state_label.setFont(QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold))
+        self.state_label.setFont(
+            QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold)
+        )
         self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.state_label)
 
@@ -304,7 +364,13 @@ class MainWindow(QMainWindow):
 
         self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.debug.setLayout(self.debug_layout(self.settings))
-        self.comm_layout, self.port_combo, self.serial_connect_button, self.stick_graph_left, self.stick_graph_right = self.connection_layout(self.settings)
+        (
+            self.comm_layout,
+            self.port_combo,
+            self.serial_connect_button,
+            self.stick_graph_left,
+            self.stick_graph_right,
+        ) = self.connection_layout(self.settings)
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
 
@@ -350,19 +416,23 @@ class MainWindow(QMainWindow):
         comm_layout = QVBoxLayout()
         comm_widget.setLayout(comm_layout)
 
-        hide_sys_details = QLabel("Hiding system ports will hide ports beginning with /dev/ttyS*")
+        hide_sys_details = QLabel(
+            "Hiding system ports will hide ports beginning with /dev/ttyS*"
+        )
         comm_layout.addWidget(hide_sys_details)
 
         hide_sys_ports = QCheckBox("Hide System Ports")
-        hide_sys_ports.setChecked(settings.value("comm/hide_sys_ports", False, type=bool)) # type: ignore
-        hide_sys_ports.clicked.connect(lambda: self.set_hide_sys_ports(hide_sys_ports.isChecked()))
+        hide_sys_ports.setChecked(settings.value("comm/hide_sys_ports", False, type=bool))  # type: ignore
+        hide_sys_ports.clicked.connect(
+            lambda: self.set_hide_sys_ports(hide_sys_ports.isChecked())
+        )
         comm_layout.addWidget(hide_sys_ports)
 
         address_details = QLabel("IP Address (preferred) or host to connect to")
         comm_layout.addWidget(address_details)
 
         host_input = QLineEdit()
-        host_input.setText(settings.value("comm/host", "http://kevinbot.local", type=str)) # type: ignore
+        host_input.setText(settings.value("comm/host", "http://kevinbot.local", type=str))  # type: ignore
         host_input.textChanged.connect(lambda: self.set_host(host_input.text()))
         comm_layout.addWidget(host_input)
 
@@ -404,11 +474,11 @@ class MainWindow(QMainWindow):
         log_level.setMaximum(6)
         log_level.setTickPosition(QSlider.TickPosition.TicksBelow)
         log_level.setTickInterval(1)
-        log_level.setValue(list(log_level_map.keys())[list(log_level_map.values()).index(settings.value("logging/level", 20, type=int))]) # type: ignore
+        log_level.setValue(list(log_level_map.keys())[list(log_level_map.values()).index(settings.value("logging/level", 20, type=int))])  # type: ignore
         log_level.valueChanged.connect(lambda: set_log_level(log_level.value()))
         logging_layout.addWidget(log_level)
 
-        log_level_name = QLabel(log_level_names[settings.value("logging/level", 20, type=int)]) # type: ignore
+        log_level_name = QLabel(log_level_names[settings.value("logging/level", 20, type=int)])  # type: ignore
         log_level_name.setFont(QFont(self.fontInfo().family(), 22))
         logging_layout.addWidget(log_level_name)
 
@@ -481,8 +551,10 @@ class MainWindow(QMainWindow):
         controller_left_layout = QVBoxLayout()
         controller_layout.addLayout(controller_left_layout)
 
-        controller_help = WarningBar("The first controller in the list will be the active controller.\n"
-                                     "Drag-and-Drop controllers to select the active one")
+        controller_help = WarningBar(
+            "The first controller in the list will be the active controller.\n"
+            "Drag-and-Drop controllers to select the active one"
+        )
         controller_left_layout.addWidget(controller_help)
 
         controller_left_layout.addWidget(self.controller_manager)
@@ -498,18 +570,21 @@ class MainWindow(QMainWindow):
         left_stick_graph.hideButtons()
         left_stick_graph.setMenuEnabled(False)
         left_stick_graph.setMouseEnabled(x=False, y=False)
-        left_stick_graph.getAxis('bottom').setStyle(showValues=False)
-        left_stick_graph.getAxis('left').setStyle(showValues=False)
+        left_stick_graph.getAxis("bottom").setStyle(showValues=False)
+        left_stick_graph.getAxis("left").setStyle(showValues=False)
         left_stick_graph.setLimits(xMin=-1, xMax=1, yMin=-1, yMax=1)
-        left_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5) # type: ignore
+        left_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5)  # type: ignore
         left_stick_graph.setFixedSize(QSize(100, 100))
-        left_stick_graph.plot([0], [0],
-              pen=None,
-              name="BEP",
-              symbol='o',
-              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
-              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-              symbolSize=8)
+        left_stick_graph.plot(
+            [0],
+            [0],
+            pen=None,
+            name="BEP",
+            symbol="o",
+            symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
+            symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+            symbolSize=8,
+        )
         controller_right_layout.addWidget(left_stick_graph)
 
         right_stick_graph = qtg.PlotWidget()
@@ -519,18 +594,21 @@ class MainWindow(QMainWindow):
         right_stick_graph.hideButtons()
         right_stick_graph.setMenuEnabled(False)
         right_stick_graph.setMouseEnabled(x=False, y=False)
-        right_stick_graph.getAxis('bottom').setStyle(showValues=False)
-        right_stick_graph.getAxis('left').setStyle(showValues=False)
+        right_stick_graph.getAxis("bottom").setStyle(showValues=False)
+        right_stick_graph.getAxis("left").setStyle(showValues=False)
         right_stick_graph.setLimits(xMin=-1, xMax=1, yMin=-1, yMax=1)
-        right_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5) # type: ignore
+        right_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5)  # type: ignore
         right_stick_graph.setFixedSize(QSize(100, 100))
-        right_stick_graph.plot([0], [0],
-              pen=None,
-              name="BEP",
-              symbol='o',
-              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
-              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-              symbolSize=8)
+        right_stick_graph.plot(
+            [0],
+            [0],
+            pen=None,
+            name="BEP",
+            symbol="o",
+            symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
+            symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+            symbolSize=8,
+        )
         controller_right_layout.addWidget(right_stick_graph)
 
         # Comm
@@ -582,28 +660,43 @@ class MainWindow(QMainWindow):
         connect_button.clicked.connect(self.open_connection)
         comm_options_layout.addWidget(connect_button, 4, 1)
 
-
         # Option setters
         port_combo.currentTextChanged.connect(lambda val: self.xbee.set_port(val))
         baud_combo.currentTextChanged.connect(lambda val: self.xbee.set_baud(int(val)))
         flow_check.stateChanged.connect(lambda val: self.xbee.set_flow_control(val))
-        api_mode_combo.currentTextChanged.connect(lambda val: self.xbee.set_api_escaped(val == "API Escaped"))
+        api_mode_combo.currentTextChanged.connect(
+            lambda val: self.xbee.set_api_escaped(val == "API Escaped")
+        )
 
         # QSettings getters
-        port_combo.addItems(self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False, type=bool)))
-        if settings.value("comm/port", "COM3") in self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False)):
-            port_combo.setCurrentText(settings.value("comm/port", "COM3")) # type: ignore
+        port_combo.addItems(
+            self.xbee.get_available_ports(
+                not self.settings.value("comm/hide_sys_ports", False, type=bool)
+            )
+        )
+        if settings.value("comm/port", "COM3") in self.xbee.get_available_ports(
+            not self.settings.value("comm/hide_sys_ports", False)
+        ):
+            port_combo.setCurrentText(settings.value("comm/port", "COM3"))  # type: ignore
         if port_combo.count() == 0:
             connect_button.setEnabled(False)
         baud_combo.setCurrentText(str(settings.value("comm/baud", 230400, type=int)))
-        flow_check.setChecked(settings.value("comm/fc", False, type=bool)) # type: ignore
-        api_mode_combo.setCurrentText(settings.value("comm/escaped", False, type=bool) and "API Escaped" or "API Unescaped") # type: ignore
+        flow_check.setChecked(settings.value("comm/fc", False, type=bool))  # type: ignore
+        api_mode_combo.setCurrentText(settings.value("comm/escaped", False, type=bool) and "API Escaped" or "API Unescaped")  # type: ignore
 
         # QSettings setters
-        port_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/port", val))
-        baud_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/baud", int(val)))
-        flow_check.stateChanged.connect(lambda val: settings.setValue("comm/fc", val == 2))
-        api_mode_combo.currentTextChanged.connect(lambda val: settings.setValue("comm/escaped", val == "API Escaped"))
+        port_combo.currentTextChanged.connect(
+            lambda val: settings.setValue("comm/port", val)
+        )
+        baud_combo.currentTextChanged.connect(
+            lambda val: settings.setValue("comm/baud", int(val))
+        )
+        flow_check.stateChanged.connect(
+            lambda val: settings.setValue("comm/fc", val == 2)
+        )
+        api_mode_combo.currentTextChanged.connect(
+            lambda val: settings.setValue("comm/escaped", val == "API Escaped")
+        )
 
         return layout, port_combo, connect_button, left_stick_graph, right_stick_graph
 
@@ -612,7 +705,7 @@ class MainWindow(QMainWindow):
 
         left_layout = QVBoxLayout()
         layout.addLayout(left_layout)
-        
+
         icon_layout = QHBoxLayout()
         left_layout.addLayout(icon_layout)
 
@@ -667,7 +760,6 @@ class MainWindow(QMainWindow):
             author_widget.author_website = author["website"]
             authors_layout.addWidget(author_widget)
 
-
         # License
 
         licenses_tabs = QTabWidget()
@@ -678,7 +770,6 @@ class MainWindow(QMainWindow):
             ("Roboto Font", "assets/fonts/Roboto/LICENSE.txt"),
             ("JetBrains Mono Font", "assets/fonts/JetBrains_Mono/OFL.txt"),
         ]:
-            
 
             license_viewer = QPlainTextEdit()
             with open(license[1], "r") as file:
@@ -708,14 +799,22 @@ class MainWindow(QMainWindow):
     # Logging
     def update_logs(self, log_area: QTextEdit):
         for _ in range(self.dc_log_queue.qsize()):
-            log_area.append(self.log_converter.convert("\033[91mDESKTOP CLIENT >>>\033[0m " + self.dc_log_queue.get().strip())
-                            .replace("display: inline; white-space: pre-wrap; word-wrap: break-word;", # ? Is there a better way to do this?
-                                     "display: inline; white-space: pre-wrap; word-wrap: break-word; font-family: JetBrains Mono;"))
+            log_area.append(
+                self.log_converter.convert(
+                    "\033[91mDESKTOP CLIENT >>>\033[0m "
+                    + self.dc_log_queue.get().strip()
+                ).replace(
+                    "display: inline; white-space: pre-wrap; word-wrap: break-word;",  # ? Is there a better way to do this?
+                    "display: inline; white-space: pre-wrap; word-wrap: break-word; font-family: JetBrains Mono;",
+                )
+            )
 
     def export_logs(self, log_area: QTextEdit):
-        name = QFileDialog.getSaveFileName(self,
-                                           'Export Logs',
-                                           filter="Plain Text (*.txt);;Colored HTML Document (*.html);;Markdown (*.md)")
+        name = QFileDialog.getSaveFileName(
+            self,
+            "Export Logs",
+            filter="Plain Text (*.txt);;Colored HTML Document (*.html);;Markdown (*.md)",
+        )
         if name[0]:
             with open(name[0], "w") as file:
                 if name[1] == "Colored HTML Document (*.html)":
@@ -729,15 +828,21 @@ class MainWindow(QMainWindow):
     def reload_ports(self):
         previous_port = self.port_combo.currentText()
         self.port_combo.clear()
-        self.port_combo.addItems(self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False, type=bool)))
-        if previous_port in self.xbee.get_available_ports(not self.settings.value("comm/hide_sys_ports", False, type=bool)):
+        self.port_combo.addItems(
+            self.xbee.get_available_ports(
+                not self.settings.value("comm/hide_sys_ports", False, type=bool)
+            )
+        )
+        if previous_port in self.xbee.get_available_ports(
+            not self.settings.value("comm/hide_sys_ports", False, type=bool)
+        ):
             self.port_combo.setCurrentText(previous_port)
 
         if self.port_combo.count() == 0:
             self.serial_connect_button.setEnabled(False)
         else:
             self.serial_connect_button.setEnabled(True)
-    
+
     def set_hide_sys_ports(self, hide: bool):
         self.settings.setValue("comm/hide_sys_ports", hide)
         self.reload_ports()
@@ -771,8 +876,9 @@ class MainWindow(QMainWindow):
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
         else:
-            logger.error("Something went seriously wrong, causing a command to be rejected")
-
+            logger.error(
+                "Something went seriously wrong, causing a command to be rejected"
+            )
 
     def serial_open_handler(self):
         self.state.connected = True
@@ -814,12 +920,22 @@ class MainWindow(QMainWindow):
                 self.state_label.setText("Emergency Stopped")
                 self.xbee.close()
             case "kevinbot.enabled":
-                self.state.enabled = value in ["True", "true", "1", "on", "ON", "enabled", "ENABLED"]
-                self.state_label.setText("Robot Enabled" if self.state.enabled else "Robot Disabled")
+                self.state.enabled = value in [
+                    "True",
+                    "true",
+                    "1",
+                    "on",
+                    "ON",
+                    "enabled",
+                    "ENABLED",
+                ]
+                self.state_label.setText(
+                    "Robot Enabled" if self.state.enabled else "Robot Disabled"
+                )
             case "system.tick.speed":
-                if not value: 
+                if not value:
                     return
-                
+
                 try:
                     tick = float(value)
                 except ValueError:
@@ -833,50 +949,55 @@ class MainWindow(QMainWindow):
             case "bms.voltages":
                 if not value:
                     return
-                
+
                 for index, i in enumerate(value.split(",")):
                     self.battery_volt_labels[index].setText(f"{int(i)/10}v")
-                    self.battery_graphs[index].add(int(i)/10)
+                    self.battery_graphs[index].add(int(i) / 10)
 
     # * Drive
     def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
         if not self.state.connected:
             return
-        
+
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.left_power*100) == round(yvalue*100):
+            if round(self.left_power * 100) == round(yvalue * 100):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.left_power = yvalue
             else:
                 self.left_power = 0
-            self.xbee.broadcast(f"drive={round(self.left_power*100)},{round(self.right_power*100)}")
+            self.xbee.broadcast(
+                f"drive={round(self.left_power*100)},{round(self.right_power*100)}"
+            )
 
     def drive_right(self, controller: pyglet.input.Controller, xvalue, yvalue):
         if not self.state.connected:
             return
-        
+
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.right_power*100) == round(yvalue*100):
+            if round(self.right_power * 100) == round(yvalue * 100):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.right_power = yvalue
             else:
                 self.right_power = 0
-            self.xbee.broadcast(f"drive={round(self.left_power*100)},{round(self.right_power*100)}")
-        
+            self.xbee.broadcast(
+                f"drive={round(self.left_power*100)},{round(self.right_power*100)}"
+            )
 
     def open_connection(self):
         if self.state.connected:
             self.end_communication()
             return
         self.xbee.open()
-        self.state.waiting_for_handshake = True      
+        self.state.waiting_for_handshake = True
         self.begin_handshake()
 
     def end_communication(self):
         if self.state.connected:
-            self.xbee.broadcast(f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc")
+            self.xbee.broadcast(
+                f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc"
+            )
             self.xbee.close()
             logger.info("Communication ended")
 
@@ -891,7 +1012,9 @@ class MainWindow(QMainWindow):
             return
 
         if self.state.waiting_for_handshake:
-            self.xbee.broadcast(f"connection.connect=DC_{self.state.id}|{__version__}|kevinbot.dc")
+            self.xbee.broadcast(
+                f"connection.connect=DC_{self.state.id}|{__version__}|kevinbot.dc"
+            )
         else:
             self.handshake_timer.stop()
 
@@ -903,7 +1026,7 @@ class MainWindow(QMainWindow):
                     self.coretick_indicator_led.set_color("#f44336")
                 else:
                     self.coretick_indicator_led.set_color("#4caf50")
-                
+
                 if time.time() - self.state.last_system_tick > self.state.tick_speed:
                     self.systick_indicator_led.set_color("#f44336")
                 else:
@@ -916,7 +1039,6 @@ class MainWindow(QMainWindow):
             self.controller_led.set_color("#4caf50")
         else:
             self.controller_led.set_color("#f44336")
-
 
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):
@@ -932,39 +1054,61 @@ class MainWindow(QMainWindow):
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")
 
-    def controller_stick_action(self, controller: pyglet.input.Controller, stick: str, xvalue: float, yvalue: float):
-        if controller == self.controller_manager.get_controllers()[0] and stick == "leftstick":
+    def controller_stick_action(
+        self,
+        controller: pyglet.input.Controller,
+        stick: str,
+        xvalue: float,
+        yvalue: float,
+    ):
+        if (
+            controller == self.controller_manager.get_controllers()[0]
+            and stick == "leftstick"
+        ):
             self.left_stick_update.emit(controller, xvalue, yvalue)
-        elif controller == self.controller_manager.get_controllers()[0] and stick == "rightstick":
+        elif (
+            controller == self.controller_manager.get_controllers()[0]
+            and stick == "rightstick"
+        ):
             self.right_stick_update.emit(controller, xvalue, yvalue)
-    
-    def update_left_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
+
+    def update_left_stick_visuals(
+        self, controller: pyglet.input.Controller, xvalue: float, yvalue: float
+    ):
         if controller != self.controller_manager.get_controllers()[0]:
             return
 
         if self.tabs.currentIndex() == 1:
             self.stick_graph_left.clear()
-            self.stick_graph_left.plot([xvalue], [yvalue],
-              pen=None,
-              name="BEP",
-              symbol='o',
-              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
-              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-              symbolSize=8)
-            
-    def update_right_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
+            self.stick_graph_left.plot(
+                [xvalue],
+                [yvalue],
+                pen=None,
+                name="BEP",
+                symbol="o",
+                symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
+                symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+                symbolSize=8,
+            )
+
+    def update_right_stick_visuals(
+        self, controller: pyglet.input.Controller, xvalue: float, yvalue: float
+    ):
         if controller != self.controller_manager.get_controllers()[0]:
             return
 
         if self.tabs.currentIndex() == 1:
             self.stick_graph_right.clear()
-            self.stick_graph_right.plot([xvalue], [yvalue],
-              pen=None,
-              name="BEP",
-              symbol='o',
-              symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),                                      
-              symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-              symbolSize=8)
+            self.stick_graph_right.plot(
+                [xvalue],
+                [yvalue],
+                pen=None,
+                name="BEP",
+                symbol="o",
+                symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
+                symbolBrush=qtg.mkBrush(0, 0, 255, 255),
+                symbolSize=8,
+            )
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
@@ -977,8 +1121,12 @@ class MainWindow(QMainWindow):
         if self.state.connected:
             msg = QMessageBox(self)
             msg.setWindowTitle("Close while Connected?")
-            msg.setText("Are you sure you want to close the application while connected?")
-            msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            msg.setText(
+                "Are you sure you want to close the application while connected?"
+            )
+            msg.setStandardButtons(
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
             msg.setIcon(QMessageBox.Icon.Question)
             result = msg.exec()
             if result == QMessageBox.StandardButton.No:
@@ -994,7 +1142,8 @@ class MainWindow(QMainWindow):
         event.accept()
 
         # Kill app in case of frozen threads due to xbee being unplugged while connected
-        sys.exit() # ? There should be a better way to exit the application?
+        sys.exit()  # ? There should be a better way to exit the application?
+
 
 def parse(app):
     """Parse the arguments and options of the given app object."""
@@ -1006,13 +1155,14 @@ def parse(app):
 
     parser.process(app)
 
-    
-def controller_backend(): # pragma: no cover
+
+def controller_backend():  # pragma: no cover
     try:
         begin_controller_backend()
     except RuntimeError as e:
         logger.error(f"Error in controller backend: {repr(e)}")
         controller_backend()
+
 
 def main(app: QApplication | None = None):
     # Log queue and ansi2html converter
@@ -1020,19 +1170,19 @@ def main(app: QApplication | None = None):
 
     settings = QSettings("meowmeowahr", "KevinbotDesktopClient")
     logger.remove()
-    logger.add(sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int)) # type: ignore
-    logger.add(dc_log_queue.put, colorize=True, level=settings.value("logging/level", 20, type=int)) # type: ignore
+    logger.add(sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int))  # type: ignore
+    logger.add(dc_log_queue.put, colorize=True, level=settings.value("logging/level", 20, type=int))  # type: ignore
 
     if not app:
         app = QApplication(sys.argv)
         app.setApplicationVersion(__version__)
         app.setWindowIcon(QIcon("assets/icons/icon.svg"))
         app.setApplicationName("Kevinbot Desktop Client")
-        app.setStyle("Fusion") # helps avoid problems in the future, make sure everyone is usign the same base
-
+        app.setStyle(
+            "Fusion"
+        )  # helps avoid problems in the future, make sure everyone is usign the same base
 
     parse(app)
-
 
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
@@ -1046,11 +1196,14 @@ def main(app: QApplication | None = None):
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Regular.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Medium.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Bold.ttf")
-    QFontDatabase.addApplicationFont("assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf")
+    QFontDatabase.addApplicationFont(
+        "assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf"
+    )
 
     MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
     app.exec()
+
 
 if __name__ == "__main__":
     main()

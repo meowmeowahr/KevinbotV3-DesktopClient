@@ -1,5 +1,6 @@
 import uuid
 
+
 class UuidManager:
     def __init__(self):
         # Dictionary to store items and their UUIDs
@@ -14,7 +15,7 @@ class UuidManager:
     def get_item(self, item_uuid):
         """Retrieve an item by its UUID."""
         return self._items.get(item_uuid)
-    
+
     def get_items(self):
         """Retrieve all items managed."""
         return list(self._items.values())

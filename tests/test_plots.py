@@ -2,7 +2,6 @@
 Unit tests for plotting widgets
 """
 
-
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QResizeEvent

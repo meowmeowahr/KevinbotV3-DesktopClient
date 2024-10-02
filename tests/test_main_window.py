@@ -6,6 +6,7 @@ import pytest
 import queue
 from PySide6.QtWidgets import QApplication
 
+
 def test_main_window(qtbot):
     import main
 
@@ -13,5 +14,5 @@ def test_main_window(qtbot):
     if app:
         win = main.MainWindow(app, queue.Queue())
         assert win.isVisible()
-    else: # pragma: no cover
+    else:  # pragma: no cover
         pytest.fail("No running QApplication instance found")

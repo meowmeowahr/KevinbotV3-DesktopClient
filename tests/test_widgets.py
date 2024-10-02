@@ -2,12 +2,19 @@
 Unit tests for widgets
 """
 
-
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QResizeEvent
 
-from ui.widgets import WarningBar, Severity, CustomTabWidget, Profile, AuthorWidget, ColorBlock
+from ui.widgets import (
+    WarningBar,
+    Severity,
+    CustomTabWidget,
+    Profile,
+    AuthorWidget,
+    ColorBlock,
+)
+
 
 def test_warning_bar_basic(qtbot):
     bar = WarningBar("test", closeable=False)
@@ -17,6 +24,7 @@ def test_warning_bar_basic(qtbot):
     qtbot.mouseClick(bar, Qt.MouseButton.LeftButton)
     assert bar.isVisible() is True
 
+
 def test_warning_bar_close(qtbot):
     bar = WarningBar("test", closeable=True)
     bar.setVisible(True)
@@ -24,12 +32,13 @@ def test_warning_bar_close(qtbot):
     qtbot.mouseClick(bar, Qt.MouseButton.LeftButton)
     assert bar.isVisible() is False
 
+
 def test_warning_bar_severity(qtbot):
     bar = WarningBar("test", severity=Severity.WARN)
     assert bar.styleSheet() == "background-color: #ffc107;"
     bar = WarningBar("test", severity=Severity.SEVERE)
     assert bar.styleSheet() == "background-color: #ef5350;"
-    
+
 
 def test_custom_tab_widget(qtbot):
     tab_widget = CustomTabWidget()
@@ -41,11 +50,13 @@ def test_custom_tab_widget(qtbot):
     assert tab_widget.icon_size == QSize(48, 48)
     assert tab_widget.tab_buttons[0].iconSize() == QSize(48, 48)
 
+
 def test_profile(qtbot):
     profile = Profile("JD")
     assert profile.initials == "JD"
-    
+
     profile.resizeEvent(QResizeEvent(QSize(100, 100), QSize(64, 64)))
+
 
 def test_author_widget(qtbot):
     author_widget = AuthorWidget()
@@ -60,9 +71,16 @@ def test_author_widget(qtbot):
     assert author_widget.author_name == "John Doe"
     assert author_widget.author_title == "Software Developer"
 
+
 def test_color_block(qtbot):
     color_block = ColorBlock()
-    color_block.set_rgb((255, 255, 127,))
+    color_block.set_rgb(
+        (
+            255,
+            255,
+            127,
+        )
+    )
     assert color_block.styleSheet() == "background-color: #ffff7f;"
     color_block.set_color("#f44336")
     assert color_block.styleSheet() == "background-color: #f44336;"

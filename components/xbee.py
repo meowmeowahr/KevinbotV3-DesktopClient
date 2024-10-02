@@ -34,20 +34,18 @@ class XBeeManager(QObject):
                 port_strs.append(port.device)
         return port_strs
 
-
     def open(self):
         """Open the serial port and initialize the XBee connection."""
         try:
             # Open the serial connection
             self.serial = serial.Serial(
-                port=self.port,
-                baudrate=self.baud,
-                rtscts=self.flow_control,
-                timeout=1
+                port=self.port, baudrate=self.baud, rtscts=self.flow_control, timeout=1
             )
 
             # Initialize XBee with API mode (escaped/unescaped)
-            self.xbee = XBee(self.serial, escaped=self.api_escaped, callback=self._handle_packet)
+            self.xbee = XBee(
+                self.serial, escaped=self.api_escaped, callback=self._handle_packet
+            )
 
             # Emit the on_open signal
             self.on_open.emit()
@@ -98,10 +96,16 @@ class XBeeManager(QObject):
         """Send a broadcast message to all devices."""
         try:
             if self.xbee:
-                self.xbee.send("tx", dest_addr=b"\x00\x00", data=bytes("{}\n".format(message), "utf-8"))
+                self.xbee.send(
+                    "tx",
+                    dest_addr=b"\x00\x00",
+                    data=bytes("{}\n".format(message), "utf-8"),
+                )
                 logger.trace(f"Broadcasted message: {message}")
             else:
                 self.on_reject.emit()
-                logger.warning(f"Cannot broadcast message, {message}: XBee not connected")
+                logger.warning(
+                    f"Cannot broadcast message, {message}: XBee not connected"
+                )
         except Exception as e:
             self.on_error.emit(f"Error broadcasting message: {repr(e)}")

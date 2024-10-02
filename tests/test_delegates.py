@@ -2,7 +2,6 @@
 Unit tests for delegates
 """
 
-
 from PySide6.QtWidgets import QTreeView, QStyleOptionViewItem, QStyle
 from PySide6.QtCore import QModelIndex
 from PySide6.QtGui import QPainter
@@ -25,6 +24,7 @@ def delegate_and_view(qtbot):
     qtbot.addWidget(view)
     return delegate, view
 
+
 def test_no_focus_delegate_paint(delegate_and_view):
     delegate, view = delegate_and_view
 
@@ -41,4 +41,4 @@ def test_no_focus_delegate_paint(delegate_and_view):
     delegate.paint(painter, option, index)
 
     # Assert that option.state is now set to State_Enabled
-    assert option.state == QStyle.StateFlag.State_Enabled # type: ignore
+    assert option.state == QStyle.StateFlag.State_Enabled  # type: ignore

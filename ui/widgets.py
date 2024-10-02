@@ -3,12 +3,21 @@ from functools import partial
 import hashlib
 
 from PySide6.QtCore import Qt, QSize, Signal, QUrl
-from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QToolButton, QStackedWidget, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QLabel,
+    QHBoxLayout,
+    QVBoxLayout,
+    QToolButton,
+    QStackedWidget,
+    QWidget,
+)
 from PySide6.QtGui import QMouseEvent, QFont, QDesktopServices, QResizeEvent
 import qtawesome as qta
 
 from ui.util import initials as str2initials
 from ui.util import rgb_to_hex as _rgb2hex
+
 
 class Severity(Enum):
     WARN = 0
@@ -47,6 +56,7 @@ class WarningBar(QFrame):
             self.setVisible(False)
         event.accept()
 
+
 class CustomTabWidget(QWidget):
     """
     A custom replacement for QTabWidget that uses a stacked widget to display tabs, and QToolButtons for switching between them.
@@ -57,7 +67,7 @@ class CustomTabWidget(QWidget):
 
     def __init__(self, parent=None):
         super(CustomTabWidget, self).__init__(parent)
-        
+
         self._icon_size = QSize(36, 36)
 
         self.tab_stack = QStackedWidget(self)
@@ -72,7 +82,6 @@ class CustomTabWidget(QWidget):
         self.root_layout.addWidget(self.tab_stack)
         self.setLayout(self.root_layout)
 
-
     def addTab(self, widget, title, icon=None):
         self.tab_stack.addWidget(widget)
         button = QToolButton()
@@ -80,9 +89,12 @@ class CustomTabWidget(QWidget):
         button.setCheckable(True)
         button.setAutoExclusive(True)
         button.setIconSize(self._icon_size)
-        button.clicked.connect(partial(self.tab_stack.setCurrentIndex, self.tab_stack.count() - 1))
-        button.clicked.connect(lambda: self.on_tab_changed.emit(self.tab_stack.count() - 1))
-
+        button.clicked.connect(
+            partial(self.tab_stack.setCurrentIndex, self.tab_stack.count() - 1)
+        )
+        button.clicked.connect(
+            lambda: self.on_tab_changed.emit(self.tab_stack.count() - 1)
+        )
 
         if icon is not None:
             button.setIcon(icon)
@@ -108,6 +120,7 @@ class CustomTabWidget(QWidget):
     def current_index(self) -> int:
         return self.tab_stack.currentIndex()
 
+
 class Profile(QLabel):
     def __init__(self, initials, parent=None):
         super().__init__(parent)
@@ -121,12 +134,12 @@ class Profile(QLabel):
         # Create a hash from the initials
         hash_object = hashlib.md5(self.initials.encode())
         hex_digest = hash_object.hexdigest()
-        
+
         # Use the first 6 characters of the hash as color components
         r1 = int(hex_digest[0:2], 16)
         g1 = int(hex_digest[2:4], 16)
         b1 = int(hex_digest[4:6], 16)
-        
+
         r2 = int(hex_digest[6:8], 16)
         g2 = int(hex_digest[8:10], 16)
         b2 = int(hex_digest[10:12], 16)
@@ -134,7 +147,7 @@ class Profile(QLabel):
         # Create gradient color stops
         color1 = f"rgb({r1}, {g1}, {b1})"
         color2 = f"rgb({r2}, {g2}, {b2})"
-        
+
         # Define the stylesheet with a circular gradient
         stylesheet = f"""
         QLabel {{
@@ -148,7 +161,7 @@ class Profile(QLabel):
         }}
         """
         return stylesheet
-    
+
     def resizeEvent(self, event: QResizeEvent) -> None:
         self.setStyleSheet(self.generate_stylesheet())
         return super().resizeEvent(event)
@@ -158,9 +171,10 @@ class AuthorWidget(QFrame):
     """
     Widget meant to show an application author's information
     """
+
     def __init__(self) -> None:
         super().__init__()
-        
+
         self._author_name = ""
         self._author_title = ""
         self._author_email = ""
@@ -177,11 +191,11 @@ class AuthorWidget(QFrame):
         self._name_layout = QVBoxLayout()
         self._layout.addLayout(self._name_layout)
 
-        self._author_name_label =  QLabel(self._author_name)
+        self._author_name_label = QLabel(self._author_name)
         self._author_name_label.setFont(QFont(self.fontInfo().family(), 14))
         self._name_layout.addWidget(self._author_name_label)
 
-        self._author_title_label =  QLabel(self._author_title)
+        self._author_title_label = QLabel(self._author_title)
         self._name_layout.addWidget(self._author_title_label)
 
         self._layout.addStretch()
@@ -189,13 +203,17 @@ class AuthorWidget(QFrame):
         self.author_site_button = QToolButton()
         self.author_site_button.setIcon(qta.icon("mdi6.web"))
         self.author_site_button.setIconSize(QSize(32, 32))
-        self.author_site_button.clicked.connect(self.open_website, type=Qt.ConnectionType.UniqueConnection)
+        self.author_site_button.clicked.connect(
+            self.open_website, type=Qt.ConnectionType.UniqueConnection
+        )
         self._layout.addWidget(self.author_site_button)
 
         self._author_email_button = QToolButton()
         self._author_email_button.setIcon(qta.icon("mdi6.email"))
         self._author_email_button.setIconSize(QSize(32, 32))
-        self._author_email_button.clicked.connect(self.open_email, type=Qt.ConnectionType.UniqueConnection)
+        self._author_email_button.clicked.connect(
+            self.open_email, type=Qt.ConnectionType.UniqueConnection
+        )
         self._layout.addWidget(self._author_email_button)
 
         self.setMaximumHeight(self.minimumSizeHint().height())
@@ -203,7 +221,7 @@ class AuthorWidget(QFrame):
     @property
     def author_name(self) -> str:
         return self._author_name
-    
+
     @author_name.setter
     def author_name(self, name: str) -> None:
         self._author_name = name
@@ -215,7 +233,7 @@ class AuthorWidget(QFrame):
     @property
     def author_title(self) -> str:
         return self._author_title
-    
+
     @author_title.setter
     def author_title(self, title: str) -> None:
         self._author_title = title
@@ -224,7 +242,7 @@ class AuthorWidget(QFrame):
     @property
     def author_email(self) -> str:
         return self._author_email
-    
+
     @author_email.setter
     def author_email(self, email: str) -> None:
         self._author_email = email
@@ -232,16 +250,17 @@ class AuthorWidget(QFrame):
     @property
     def author_website(self) -> str:
         return self._author_website
-    
+
     @author_website.setter
     def author_website(self, website: str) -> None:
         self._author_website = website
 
-    def open_website(self) -> None: # pragma: no cover
+    def open_website(self) -> None:  # pragma: no cover
         QDesktopServices.openUrl(QUrl(self._author_website))
 
-    def open_email(self) -> None: # pragma: no cover
+    def open_email(self) -> None:  # pragma: no cover
         QDesktopServices.openUrl(QUrl(f"mailto:{self._author_email}"))
+
 
 class ColorBlock(QFrame):
     """

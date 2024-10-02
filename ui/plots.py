@@ -1,5 +1,6 @@
 import pyqtgraph as pg
 
+
 class BatteryGraph(pg.PlotWidget):
     def __init__(self):
         super().__init__()
@@ -11,7 +12,7 @@ class BatteryGraph(pg.PlotWidget):
         self.setMenuEnabled(False)
         self.setMouseTracking(False)
         self.setMouseEnabled(x=False, y=False)
-        self.getAxis('bottom').setStyle(showValues=False)
+        self.getAxis("bottom").setStyle(showValues=False)
         self.time = list(range(10))
         self.values = [0.0 for _ in range(10)]
         # Get a line reference

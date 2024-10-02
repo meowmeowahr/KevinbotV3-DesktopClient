@@ -130,6 +130,7 @@ class ControllerManagerWidget(QWidget):
             )
             if not controller.device.is_open:
                 controller.open()
+            controller.rumble_play_weak(1, 0.1)
             controller.on_button_press = self.controller_press
             controller.on_button_release = self.controller_release
             controller.on_stick_motion = self.controller_stick_motion

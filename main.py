@@ -956,7 +956,7 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if not self.state.connected:
+        if (not self.state.connected) or self.state.waiting_for_handshake:
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
@@ -971,7 +971,7 @@ class MainWindow(QMainWindow):
             )
 
     def drive_right(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if not self.state.connected:
+        if (not self.state.connected) or self.state.waiting_for_handshake:
             return
 
         if controller == self.controller_manager.get_controllers()[0]:

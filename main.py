@@ -86,6 +86,8 @@ class StateManager:
     robot_host: str = "http://kevinbot.local"
     last_system_tick: float = time.time()
     last_core_tick: float = time.time()
+    left_pwoer: float = 0.0
+    right_power: float = 0.0
 
 
 class MainWindow(QMainWindow):
@@ -180,8 +182,8 @@ class MainWindow(QMainWindow):
         self.right_stick_update.connect(self.update_right_stick_visuals)
 
         # Drive
-        self.left_power = 0
-        self.right_power = 0
+        self.state.left_power = 0
+        self.state.right_power = 0
 
         self.left_stick_update.connect(self.drive_left)
         self.right_stick_update.connect(self.drive_right)
@@ -960,14 +962,14 @@ class MainWindow(QMainWindow):
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.left_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
+            if round(self.state.left_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
-                self.left_power = yvalue
+                self.state.left_power = yvalue
             else:
-                self.left_power = 0
+                self.state.left_power = 0
             self.xbee.broadcast(
-                f"drive={round(self.left_power*100)},{round(self.right_power*100)}"
+                f"drive={round(self.state.left_power*100)},{round(self.state.right_power*100)}"
             )
 
     def drive_right(self, controller: pyglet.input.Controller, xvalue, yvalue):
@@ -975,14 +977,14 @@ class MainWindow(QMainWindow):
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.right_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
+            if round(self.state.right_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
-                self.right_power = yvalue
+                self.state.right_power = yvalue
             else:
-                self.right_power = 0
+                self.state.right_power = 0
             self.xbee.broadcast(
-                f"drive={round(self.left_power*100)},{round(self.right_power*100)}"
+                f"drive={round(self.state.left_power*100)},{round(self.state.right_power*100)}"
             )
 
     def open_connection(self):

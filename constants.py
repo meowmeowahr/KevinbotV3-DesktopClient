@@ -13,4 +13,4 @@ CUSTOM_COLORS_DARK: dict[str, str | dict[str, str]] | None = {
     "background": "#111114",
 }
 
-CONTROLLER_DEADBAND = 0.15
+CONTROLLER_DEADBAND = 0.12

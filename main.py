@@ -960,7 +960,7 @@ class MainWindow(QMainWindow):
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.left_power * 100) == round(yvalue * 100):
+            if round(self.left_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.left_power = yvalue
@@ -975,7 +975,7 @@ class MainWindow(QMainWindow):
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.right_power * 100) == round(yvalue * 100):
+            if round(self.right_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.right_power = yvalue

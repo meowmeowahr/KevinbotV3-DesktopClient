@@ -55,9 +55,10 @@ import shortuuid
 
 import xbee
 
-from ui.util import add_tabs
+from ui.util import add_tabs, change_url_port
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
 from ui.plots import BatteryGraph
+from ui.mjpeg import MJPEGViewer
 
 from components import controllers, ControllerManagerWidget, begin_controller_backend
 from components.xbee import XBeeManager
@@ -84,6 +85,7 @@ class StateManager:
     id: str = ""
     tick_speed: float | None = None
     robot_host: str = "http://kevinbot.local"
+    camera_port: int = 5100 # TODO: add to QSettings
     last_system_tick: float = time.time()
     last_core_tick: float = time.time()
     left_pwoer: float = 0.0
@@ -259,8 +261,6 @@ class MainWindow(QMainWindow):
             "}"
         )
 
-        self.main_layout.addStretch()
-
         # * State Bar
         self.state_bar = QHBoxLayout()
         self.main_layout.addLayout(self.state_bar)
@@ -376,8 +376,39 @@ class MainWindow(QMainWindow):
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
 
-        # * End Main Layout
-        self.main_layout.addStretch()
+        # * Main Split View
+        self.splitter = QSplitter()
+        self.splitter.setOrientation(Qt.Orientation.Horizontal)
+        self.main_layout.addWidget(self.splitter, 2)
+
+        # * FPV
+
+        self.left_split = QWidget()
+        self.splitter.addWidget(self.left_split)
+        self.splitter.setCollapsible(0, False)
+
+        self.left_split_layout = QVBoxLayout()
+        self.left_split.setLayout(self.left_split_layout)
+
+        self.fpv_control_layout = QHBoxLayout()
+        self.left_split_layout.addLayout(self.fpv_control_layout)
+
+        self.fpv_refresh = QPushButton()
+        self.fpv_refresh.setIcon(qta.icon("mdi6.reload"))
+        self.fpv_refresh.setIconSize(QSize(24, 24))
+        self.fpv_refresh.setFixedSize(QSize(32, 32))
+        self.fpv_control_layout.addWidget(self.fpv_refresh)
+
+        self.fpv_control_layout.addStretch()
+
+        self.fpv = MJPEGViewer(change_url_port(self.state.robot_host, 5100) + "/stream")
+        self.fpv_refresh.clicked.connect(self.fpv.mjpeg_thread.start)
+        self.left_split_layout.addWidget(self.fpv, 2)
+
+        # * Main View
+
+        self.right_split = QWidget()
+        self.splitter.addWidget(self.right_split)
 
         self.show()
 
@@ -1120,6 +1151,11 @@ class MainWindow(QMainWindow):
         self.state.robot_host = host
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.setDisabled(True)
+
+        self.fpv.mjpeg_thread.stop()
+        self.fpv.mjpeg_thread.wait()
+
         if self.state.connected:
             msg = QMessageBox(self)
             msg.setWindowTitle("Close while Connected?")
@@ -1132,6 +1168,7 @@ class MainWindow(QMainWindow):
             msg.setIcon(QMessageBox.Icon.Question)
             result = msg.exec()
             if result == QMessageBox.StandardButton.No:
+                self.setDisabled(False)
                 event.ignore()
                 return
 

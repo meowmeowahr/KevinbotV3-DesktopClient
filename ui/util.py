@@ -1,5 +1,7 @@
 from typing import Tuple
 
+from urllib.parse import urlparse, urlunparse
+
 from PySide6.QtGui import QIcon, QTransform
 from PySide6.QtWidgets import QWidget, QTabWidget
 from PySide6.QtCore import Qt
@@ -51,3 +53,17 @@ def initials(phrase):
 
 def rgb_to_hex(rgb):
     return "%02x%02x%02x" % tuple(rgb)
+
+
+def change_url_port(url, new_port):
+    # Parse the URL into components
+    parsed_url = urlparse(url)
+
+    # Replace the port (or add it if not present)
+    netloc = parsed_url.hostname
+    if new_port:
+        netloc += f":{new_port}"
+
+    # Rebuild the URL with the new port
+    updated_url = urlunparse(parsed_url._replace(netloc=netloc))
+    return updated_url

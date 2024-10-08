@@ -49,13 +49,14 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QToolButton,
 )
+from Custom_Widgets.QCustomModals import QCustomModals
 
 import ansi2html
 import shortuuid
 
 import xbee
 
-from ui.util import add_tabs, change_url_port
+from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
 from ui.plots import BatteryGraph
 from ui.mjpeg import MJPEGViewer
@@ -84,7 +85,7 @@ class StateManager:
     enabled: bool = False
     id: str = ""
     tick_speed: float | None = None
-    robot_host: str = "http://kevinbot.local"
+    camera_address: str = "http://kevinbot.local"
     camera_port: int = 5100 # TODO: add to QSettings
     last_system_tick: float = time.time()
     last_core_tick: float = time.time()
@@ -123,8 +124,8 @@ class MainWindow(QMainWindow):
         self.state.id = shortuuid.uuid()
         logger.info(f"Desktop Client ID is {self.state.id}")
 
-        self.state.robot_host = self.settings.value("comm/host", "http://kevinbot.local", type=str)  # type: ignore
-        logger.info(f"Robot Network Host: {self.state.robot_host}")
+        self.state.camera_address = self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str)  # type: ignore
+        logger.info(f"Robot Network Host: {self.state.camera_address}")
 
         # Theme
         theme = self.settings.value("window/theme", "dark", type=str)
@@ -401,8 +402,13 @@ class MainWindow(QMainWindow):
 
         self.fpv_control_layout.addStretch()
 
-        self.fpv = MJPEGViewer(change_url_port(self.state.robot_host, 5100) + "/stream")
-        self.fpv_refresh.clicked.connect(self.fpv.mjpeg_thread.start)
+        self.fpv_fps = QLabel("?? FPS")
+        self.fpv_control_layout.addWidget(self.fpv_fps)
+
+        self.fpv = MJPEGViewer(self.state.camera_address)
+        self.fpv_refresh.clicked.connect(self.reload_fpv)
+        self.fpv_last_frame = time.time()
+        self.fpv.mjpeg_thread.frame_received.connect(self.fpv_new_frame)
         self.left_split_layout.addWidget(self.fpv, 2)
 
         # * Main View
@@ -411,6 +417,14 @@ class MainWindow(QMainWindow):
         self.splitter.addWidget(self.right_split)
 
         self.show()
+
+    def fpv_new_frame(self):
+        self.fpv_fps.setText(f"{round(1 / (time.time() - self.fpv_last_frame))} FPS")
+        self.fpv_last_frame = time.time()
+
+    def reload_fpv(self):
+        self.fpv.mjpeg_thread.terminate()
+        self.fpv.mjpeg_thread.start()
 
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()
@@ -464,10 +478,10 @@ class MainWindow(QMainWindow):
         address_details = QLabel("IP Address (preferred) or host to connect to")
         comm_layout.addWidget(address_details)
 
-        host_input = QLineEdit()
-        host_input.setText(settings.value("comm/host", "http://kevinbot.local", type=str))  # type: ignore
-        host_input.textChanged.connect(lambda: self.set_host(host_input.text()))
-        comm_layout.addWidget(host_input)
+        camera_input = QLineEdit()
+        camera_input.setText(self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str))  # type: ignore
+        camera_input.textChanged.connect(lambda: self.set_camera_address(camera_input.text()))
+        comm_layout.addWidget(camera_input)
 
         # Logging
         logging_widget = QWidget()
@@ -998,7 +1012,7 @@ class MainWindow(QMainWindow):
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.state.left_power = yvalue
             else:
-                self.state.left_power = 0
+                self.state.left_pwoer = 0
             self.xbee.broadcast(
                 f"drive={round(self.state.left_power*100)},{round(self.state.right_power*100)}"
             )
@@ -1077,6 +1091,19 @@ class MainWindow(QMainWindow):
     def controller_connected_handler(self, controller: pyglet.input.Controller):
         controllers.map_stick(controller, self.controller_stick_action)
         logger.success(f"Controller connected: {controller.name}")
+        modal = QCustomModals.InformationModal(
+            title="Controllers", 
+            parent=self.main,
+            position='top-right',
+            description="Controller has been connected",
+            isClosable=True,
+            modalIcon=qta.icon("mdi6.information", color="#0f0f0f").pixmap(QSize(32, 32)),
+            closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
+            duration=3000
+        )
+        modal.setStyleSheet("* { border: none; background-color: #b3e5fc; color: #0f0f0f; }")
+        modal.setParent(self)
+        modal.show()
 
     def controller_refresh_handler(self, controller: list[pyglet.input.Controller]):
         logger.debug("Controllers refreshed")
@@ -1086,6 +1113,19 @@ class MainWindow(QMainWindow):
 
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")
+        modal = QCustomModals.InformationModal(
+            title="Controllers", 
+            parent=self.main,
+            position='top-right',
+            description="Controller has disconnected",
+            isClosable=True,
+            modalIcon=qta.icon("mdi6.alert-decagram", color="#0f0f0f").pixmap(QSize(32, 32)),
+            closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
+            duration=3000
+        )
+        modal.setStyleSheet("* { border: none; background-color: #ffecb3; color: #0f0f0f; }")
+        modal.setParent(self)
+        modal.show()
 
     def controller_stick_action(
         self,
@@ -1146,14 +1186,15 @@ class MainWindow(QMainWindow):
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
 
-    def set_host(self, host: str):
-        self.settings.setValue("comm/host", host)
-        self.state.robot_host = host
+    def set_camera_address(self, host: str):
+        self.settings.setValue("comm/camera_address", host)
+        self.state.camera_address = host
+        self.fpv.stream_url = host
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)
 
-        self.fpv.mjpeg_thread.stop()
+        self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.wait()
 
         if self.state.connected:

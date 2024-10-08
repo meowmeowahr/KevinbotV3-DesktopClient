@@ -8,10 +8,36 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget, QSizePolicy
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import QThread, Signal, Qt
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
 import urllib3
 
 from loguru import logger
+
+
+def create_image_with_text(text1, text2, image_size=(400, 400), font_path=None, wrap_width=60):
+    # Create a blank image with white background
+    image = Image.new("RGB", image_size, "white")
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default(16)
+
+    # Word wrap the text
+    wrapped_text1 = textwrap.fill(text1, width=wrap_width)
+    wrapped_text2 = textwrap.fill(text2, width=wrap_width)
+
+    # Combine the texts with some space between them
+    combined_text = f"{wrapped_text1}\n\n{wrapped_text2}"
+
+    # Calculate text size
+    _, _, text_width, text_height = draw.textbbox((0, 0), combined_text, font=font)
+
+    # Calculate position to center the text
+    position = ((image_size[0] - text_width) // 2, (image_size[1] - text_height) // 2)
+
+    # Draw the text on the image
+    draw.text(position, combined_text, font=font, fill="black")
+
+    return image
 
 
 class MJPEGStreamThread(QThread):
@@ -20,15 +46,12 @@ class MJPEGStreamThread(QThread):
     def __init__(self, stream_url):
         super().__init__()
         self.stream_url = stream_url
-        self._running = True
 
     def run(self):
         try:
-            with requests.get(self.stream_url, stream=True) as r:
+            with requests.get(self.stream_url, stream=True, timeout=10) as r:
                 buffer = b''
                 for chunk in r.iter_content(chunk_size=1024):
-                    if not self._running:
-                        break
                     buffer += chunk
                     # Find the start and end of a frame
                     start_idx = buffer.find(b'\xff\xd8')  # Start of JPEG
@@ -43,11 +66,14 @@ class MJPEGStreamThread(QThread):
                         img = img.convert('RGB')
                         qimg = QImage(img.tobytes(), img.width, img.height, QImage.Format.Format_RGB888)
                         self.frame_received.emit(qimg)
-        except (urllib3.exceptions.MaxRetryError, urllib3.exceptions.ConnectionError, requests.exceptions.ConnectionError, ConnectionRefusedError) as e:
+        except (urllib3.exceptions.MaxRetryError, urllib3.exceptions.ConnectionError, requests.exceptions.ConnectionError, ConnectionRefusedError, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError, requests.exceptions.ReadTimeout) as e:
             logger.error(f"Could not open MJPEG stream, {repr(e)}")
 
-    def stop(self):
-        self._running = False
+            # Create a fake frame that displays description of error
+            img = create_image_with_text("Error", repr(e), (640, 480,))
+            img = img.convert('RGB')
+            qimg = QImage(img.tobytes(), img.width, img.height, QImage.Format.Format_RGB888)
+            self.frame_received.emit(qimg)
 
 
 class MJPEGViewer(QWidget):

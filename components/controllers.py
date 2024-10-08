@@ -161,7 +161,8 @@ class ControllerManagerWidget(QWidget):
         pass
 
     def controller_disconnect(self, controller: pyglet.input.Controller):
-        self.controllers.remove(controller)
+        if controller in self.controllers:
+            self.controllers.remove(controller)
         self.on_disconnected.emit(controller)
         return controller
 

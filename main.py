@@ -89,7 +89,7 @@ class StateManager:
     camera_port: int = 5100 # TODO: add to QSettings
     last_system_tick: float = time.time()
     last_core_tick: float = time.time()
-    left_pwoer: float = 0.0
+    left_power: float = 0.0
     right_power: float = 0.0
 
 
@@ -1012,7 +1012,7 @@ class MainWindow(QMainWindow):
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.state.left_power = yvalue
             else:
-                self.state.left_pwoer = 0
+                self.state.left_power = 0
             self.xbee.broadcast(
                 f"drive={round(self.state.left_power*100)},{round(self.state.right_power*100)}"
             )
@@ -1189,7 +1189,7 @@ class MainWindow(QMainWindow):
     def set_camera_address(self, host: str):
         self.settings.setValue("comm/camera_address", host)
         self.state.camera_address = host
-        self.fpv.stream_url = host
+        self.fpv.mjpeg_thread.stream_url = host
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)

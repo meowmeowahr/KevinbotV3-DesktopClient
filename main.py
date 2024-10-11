@@ -58,7 +58,7 @@ import xbee
 
 from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
-from ui.plots import BatteryGraph
+from ui.plots import BatteryGraph, StickVisual
 from ui.mjpeg import MJPEGViewer
 
 from components import controllers, ControllerManagerWidget, begin_controller_backend
@@ -371,8 +371,8 @@ class MainWindow(QMainWindow):
             self.comm_layout,
             self.port_combo,
             self.serial_connect_button,
-            self.stick_graph_left,
-            self.stick_graph_right,
+            self.stick_visual_left,
+            self.stick_visual_right,
         ) = self.connection_layout(self.settings)
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
@@ -413,8 +413,15 @@ class MainWindow(QMainWindow):
 
         # * Main View
 
-        self.right_split = QWidget()
-        self.splitter.addWidget(self.right_split)
+        self.right_tabs = QTabWidget()
+        self.right_tabs.setIconSize(QSize(24, 24))
+        self.splitter.addWidget(self.right_tabs)
+
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head")
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting")
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.eye"), "Eyes")
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi.text-to-speech"), "Speech")
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.cogs"), "System")
 
         self.show()
 
@@ -610,53 +617,15 @@ class MainWindow(QMainWindow):
         controller_layout.addLayout(controller_right_layout)
 
         # Joystick visuals
-        left_stick_graph = qtg.PlotWidget()
-        left_stick_graph.setMouseTracking(False)
-        left_stick_graph.setBackground("transparent")
-        left_stick_graph.showGrid(True, True, 1)
-        left_stick_graph.hideButtons()
-        left_stick_graph.setMenuEnabled(False)
-        left_stick_graph.setMouseEnabled(x=False, y=False)
-        left_stick_graph.getAxis("bottom").setStyle(showValues=False)
-        left_stick_graph.getAxis("left").setStyle(showValues=False)
-        left_stick_graph.setLimits(xMin=-1, xMax=1, yMin=-1, yMax=1)
-        left_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5)  # type: ignore
-        left_stick_graph.setFixedSize(QSize(100, 100))
-        left_stick_graph.plot(
-            [0],
-            [0],
-            pen=None,
-            name="BEP",
-            symbol="o",
-            symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
-            symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-            symbolSize=8,
-        )
-        controller_right_layout.addWidget(left_stick_graph)
+        left_stick_visual = StickVisual()
+        left_stick_visual.setFixedSize(QSize(100, 100))
+        left_stick_visual.plot(0, 0)
+        controller_right_layout.addWidget(left_stick_visual)
 
-        right_stick_graph = qtg.PlotWidget()
-        right_stick_graph.setMouseTracking(False)
-        right_stick_graph.setBackground("transparent")
-        right_stick_graph.showGrid(True, True, 1)
-        right_stick_graph.hideButtons()
-        right_stick_graph.setMenuEnabled(False)
-        right_stick_graph.setMouseEnabled(x=False, y=False)
-        right_stick_graph.getAxis("bottom").setStyle(showValues=False)
-        right_stick_graph.getAxis("left").setStyle(showValues=False)
-        right_stick_graph.setLimits(xMin=-1, xMax=1, yMin=-1, yMax=1)
-        right_stick_graph.setRange(xRange=(-1, 1), yRange=(-1, 1), padding=5)  # type: ignore
-        right_stick_graph.setFixedSize(QSize(100, 100))
-        right_stick_graph.plot(
-            [0],
-            [0],
-            pen=None,
-            name="BEP",
-            symbol="o",
-            symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
-            symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-            symbolSize=8,
-        )
-        controller_right_layout.addWidget(right_stick_graph)
+        right_stick_visual = StickVisual()
+        right_stick_visual.setFixedSize(QSize(100, 100))
+        right_stick_visual.plot(0, 0)
+        controller_right_layout.addWidget(right_stick_visual)
 
         # Comm
         comm_widget = QWidget()
@@ -745,7 +714,7 @@ class MainWindow(QMainWindow):
             lambda val: settings.setValue("comm/escaped", val == "API Escaped")
         )
 
-        return layout, port_combo, connect_button, left_stick_graph, right_stick_graph
+        return layout, port_combo, connect_button, left_stick_visual, right_stick_visual
 
     def about_layout(self):
         layout = QHBoxLayout()
@@ -1152,16 +1121,9 @@ class MainWindow(QMainWindow):
             return
 
         if self.tabs.currentIndex() == 1:
-            self.stick_graph_left.clear()
-            self.stick_graph_left.plot(
-                [xvalue],
-                [yvalue],
-                pen=None,
-                name="BEP",
-                symbol="o",
-                symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
-                symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-                symbolSize=8,
+            self.stick_visual_left.plot(
+                xvalue,
+                yvalue,
             )
 
     def update_right_stick_visuals(
@@ -1171,16 +1133,9 @@ class MainWindow(QMainWindow):
             return
 
         if self.tabs.currentIndex() == 1:
-            self.stick_graph_right.clear()
-            self.stick_graph_right.plot(
-                [xvalue],
-                [yvalue],
-                pen=None,
-                name="BEP",
-                symbol="o",
-                symbolPen=qtg.mkPen(color=(0, 0, 255), width=0),
-                symbolBrush=qtg.mkBrush(0, 0, 255, 255),
-                symbolSize=8,
+            self.stick_visual_right.plot(
+                xvalue,
+                yvalue,
             )
 
     def set_theme(self, theme: str):

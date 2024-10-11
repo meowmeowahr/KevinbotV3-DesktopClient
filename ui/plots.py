@@ -1,3 +1,5 @@
+from PySide6.QtWidgets import QWidget, QProgressBar, QGridLayout, QLabel
+
 import pyqtgraph as pg
 
 
@@ -35,3 +37,29 @@ class BatteryGraph(pg.PlotWidget):
 
     def set_voltage_range(self, min_voltage: float, max_voltage: float):
         self.setYRange(min_voltage, max_voltage)
+
+
+class StickVisual(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self._root_layout = QGridLayout()
+        self.setLayout(self._root_layout)
+
+        self.x_label = QLabel("X")
+        self._root_layout.addWidget(self.x_label, 0, 0)
+
+        self.y_label = QLabel("Y")
+        self._root_layout.addWidget(self.y_label, 1, 0)
+
+        self.x_progress_bar = QProgressBar()
+        self.x_progress_bar.setRange(-100, 100)
+        self._root_layout.addWidget(self.x_progress_bar, 0, 1)
+
+        self.y_progress_bar = QProgressBar()
+        self.y_progress_bar.setRange(-100, 100)
+        self._root_layout.addWidget(self.y_progress_bar, 1, 1)
+
+    def plot(self, x, y):
+        self.x_progress_bar.setValue((x)*100)
+        self.y_progress_bar.setValue((y)*100)

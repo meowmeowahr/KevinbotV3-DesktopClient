@@ -119,6 +119,5 @@ class MJPEGViewer(QWidget):
         self.apply_scaling()
 
     def closeEvent(self, event):
-        self.mjpeg_thread.stop()
-        self.mjpeg_thread.wait()
+        self.mjpeg_thread.terminate()
         event.accept()

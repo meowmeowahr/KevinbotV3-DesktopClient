@@ -86,7 +86,6 @@ class StateManager:
     id: str = ""
     tick_speed: float | None = None
     camera_address: str = "http://kevinbot.local"
-    camera_port: int = 5100 # TODO: add to QSettings
     last_system_tick: float = time.time()
     last_core_tick: float = time.time()
     left_power: float = 0.0
@@ -117,7 +116,7 @@ class MainWindow(QMainWindow):
                 self.settings.value("window/x", type=int),  # type: ignore
                 self.settings.value("window/y", type=int),  # type: ignore
                 self.settings.value("window/width", type=int),  # type: ignore
-                self.settings.value("window/height", type=int), # type: ignore
+                self.settings.value("window/height", type=int),  # type: ignore
             )
 
         # State Manager
@@ -421,8 +420,12 @@ class MainWindow(QMainWindow):
         self.right_tabs.setIconSize(QSize(24, 24))
         self.splitter.addWidget(self.right_tabs)
 
-        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head")
-        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting")
+        self.right_tabs.addTab(
+            QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head"
+        )
+        self.right_tabs.addTab(
+            QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting"
+        )
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.eye"), "Eyes")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi.text-to-speech"), "Speech")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.cogs"), "System")
@@ -491,7 +494,9 @@ class MainWindow(QMainWindow):
 
         camera_input = QLineEdit()
         camera_input.setText(self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str))  # type: ignore
-        camera_input.textChanged.connect(lambda: self.set_camera_address(camera_input.text()))
+        camera_input.textChanged.connect(
+            lambda: self.set_camera_address(camera_input.text())
+        )
         comm_layout.addWidget(camera_input)
 
         # Logging
@@ -723,7 +728,14 @@ class MainWindow(QMainWindow):
             lambda val: settings.setValue("comm/escaped", val == "API Escaped")
         )
 
-        return layout, port_combo, connect_button, left_stick_visual, right_stick_visual, pov_visual
+        return (
+            layout,
+            port_combo,
+            connect_button,
+            left_stick_visual,
+            right_stick_visual,
+            pov_visual,
+        )
 
     def about_layout(self):
         layout = QHBoxLayout()
@@ -985,7 +997,11 @@ class MainWindow(QMainWindow):
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.state.left_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
+            if round(self.state.left_power * 100) == (
+                round(yvalue * 100)
+                if abs(yvalue) > constants.CONTROLLER_DEADBAND
+                else 0
+            ):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.state.left_power = yvalue
@@ -1000,7 +1016,11 @@ class MainWindow(QMainWindow):
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.state.right_power * 100) == (round(yvalue * 100) if abs(yvalue) > constants.CONTROLLER_DEADBAND else 0):
+            if round(self.state.right_power * 100) == (
+                round(yvalue * 100)
+                if abs(yvalue) > constants.CONTROLLER_DEADBAND
+                else 0
+            ):
                 return
             if abs(yvalue) > constants.CONTROLLER_DEADBAND:
                 self.state.right_power = yvalue
@@ -1071,16 +1091,20 @@ class MainWindow(QMainWindow):
         controllers.map_pov(controller, self.controller_dpad_action)
         logger.success(f"Controller connected: {controller.name}")
         modal = QCustomModals.InformationModal(
-            title="Controllers", 
+            title="Controllers",
             parent=self.main,
-            position='top-right',
+            position="top-right",
             description="Controller has been connected",
             isClosable=True,
-            modalIcon=qta.icon("mdi6.information", color="#0f0f0f").pixmap(QSize(32, 32)),
+            modalIcon=qta.icon("mdi6.information", color="#0f0f0f").pixmap(
+                QSize(32, 32)
+            ),
             closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
-            duration=3000
+            duration=3000,
         )
-        modal.setStyleSheet("* { border: none; background-color: #b3e5fc; color: #0f0f0f; }")
+        modal.setStyleSheet(
+            "* { border: none; background-color: #b3e5fc; color: #0f0f0f; }"
+        )
         modal.setParent(self)
         modal.show()
 
@@ -1093,16 +1117,20 @@ class MainWindow(QMainWindow):
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")
         modal = QCustomModals.InformationModal(
-            title="Controllers", 
+            title="Controllers",
             parent=self.main,
-            position='top-right',
+            position="top-right",
             description="Controller has disconnected",
             isClosable=True,
-            modalIcon=qta.icon("mdi6.alert-decagram", color="#0f0f0f").pixmap(QSize(32, 32)),
+            modalIcon=qta.icon("mdi6.alert-decagram", color="#0f0f0f").pixmap(
+                QSize(32, 32)
+            ),
             closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
-            duration=3000
+            duration=3000,
         )
-        modal.setStyleSheet("* { border: none; background-color: #ffecb3; color: #0f0f0f; }")
+        modal.setStyleSheet(
+            "* { border: none; background-color: #ffecb3; color: #0f0f0f; }"
+        )
         modal.setParent(self)
         modal.show()
 
@@ -1125,12 +1153,12 @@ class MainWindow(QMainWindow):
             self.right_stick_update.emit(controller, xvalue, yvalue)
 
     def controller_dpad_action(
-            self,
-            controller: pyglet.input.Controller,
-            left: bool,
-            down: bool,
-            right: bool,
-            up: bool,
+        self,
+        controller: pyglet.input.Controller,
+        left: bool,
+        down: bool,
+        right: bool,
+        up: bool,
     ):
         if controller == self.controller_manager.get_controllers()[0]:
             self.pov_update.emit(controller, left, down, right, up)
@@ -1159,10 +1187,17 @@ class MainWindow(QMainWindow):
                 yvalue,
             )
 
-    def update_dpad_visuals(self, controller: pyglet.input.Controller, dpleft: bool, dpright: bool, dpup: bool, dpdown: bool):
+    def update_dpad_visuals(
+        self,
+        controller: pyglet.input.Controller,
+        dpleft: bool,
+        dpright: bool,
+        dpup: bool,
+        dpdown: bool,
+    ):
         if controller != self.controller_manager.get_controllers()[0]:
             return
-        
+
         if self.tabs.currentIndex() == 1:
             if dpleft and dpup:
                 cardinal = Cardinal.NORTHWEST

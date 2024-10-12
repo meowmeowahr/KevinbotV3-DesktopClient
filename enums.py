@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class Cardinal(Enum):
     NORTH = 0
     EAST = 1

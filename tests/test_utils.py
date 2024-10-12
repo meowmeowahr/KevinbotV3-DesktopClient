@@ -34,6 +34,7 @@ def test_initials():
 def test_rgb2hex():
     assert rgb_to_hex((255, 127, 0)).upper() == "FF7F00"
 
+
 def test_url_port():
     assert change_url_port("http://localhost", 5000) == "http://localhost:5000"
     assert change_url_port("https://example.com:433", 80) == "https://example.com:80"

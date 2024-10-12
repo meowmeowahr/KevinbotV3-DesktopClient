@@ -1,5 +1,4 @@
 from PySide6.QtWidgets import QWidget, QProgressBar, QGridLayout, QLabel
-from ui.widgets import ColorBlock
 
 import pyqtgraph as pg
 
@@ -64,8 +63,9 @@ class StickVisual(QWidget):
         self._root_layout.addWidget(self.y_progress_bar, 1, 1)
 
     def plot(self, x, y):
-        self.x_progress_bar.setValue((x)*100)
-        self.y_progress_bar.setValue((y)*100)
+        self.x_progress_bar.setValue((x) * 100)
+        self.y_progress_bar.setValue((y) * 100)
+
 
 class PovVisual(QWidget):
     def __init__(self):
@@ -128,7 +128,6 @@ class PovVisual(QWidget):
         self.pov_se.setTextVisible(False)
         self._root_layout.addWidget(self.pov_se, 2, 2)
 
-
     def plot(self, pov: enums.Cardinal):
         direction_map = {
             enums.Cardinal.NORTH: self.pov_n,
@@ -139,8 +138,8 @@ class PovVisual(QWidget):
             enums.Cardinal.SOUTHWEST: self.pov_sw,
             enums.Cardinal.WEST: self.pov_w,
             enums.Cardinal.NORTHWEST: self.pov_nw,
-            enums.Cardinal.CENTER: self.pov_c
+            enums.Cardinal.CENTER: self.pov_c,
         }
-        
+
         for direction, attr in direction_map.items():
             attr.setValue(1 if pov == direction else 0)

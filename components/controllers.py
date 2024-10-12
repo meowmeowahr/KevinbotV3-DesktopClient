@@ -66,6 +66,7 @@ def map_stick(controller: pyglet.input.Controller, action: typing.Callable):
 
     controller.on_stick_motion = handler
 
+
 def map_pov(controller: pyglet.input.Controller, action: typing.Callable):
     """
     Adds a new mapping to an existing Controller while keeping all old mappings
@@ -76,7 +77,11 @@ def map_pov(controller: pyglet.input.Controller, action: typing.Callable):
     previous_mapping = controller.on_dpad_motion
 
     def handler(
-        controller: pyglet.input.Controller, dpleft: bool, dpright: bool, dpup: bool, dpdown: bool
+        controller: pyglet.input.Controller,
+        dpleft: bool,
+        dpright: bool,
+        dpup: bool,
+        dpdown: bool,
     ):
         previous_mapping(controller, dpleft, dpright, dpup, dpdown)
         action(controller, dpleft, dpright, dpup, dpdown)

@@ -53,7 +53,7 @@ def map_stick(controller: pyglet.input.Controller, action: typing.Callable):
     """
     Adds a new mapping to an existing Controller while keeping all old mappings
     :param controller: pyglet controller to map
-    :param action: callable function that handles all button presses
+    :param action: callable function that handles all stick values
     :return:
     """
     previous_mapping = controller.on_stick_motion
@@ -65,6 +65,23 @@ def map_stick(controller: pyglet.input.Controller, action: typing.Callable):
         action(controller, stick, xvalue, yvalue)
 
     controller.on_stick_motion = handler
+
+def map_pov(controller: pyglet.input.Controller, action: typing.Callable):
+    """
+    Adds a new mapping to an existing Controller while keeping all old mappings
+    :param controller: pyglet controller to map
+    :param action: callable function that handles all dpad presses
+    :return:
+    """
+    previous_mapping = controller.on_dpad_motion
+
+    def handler(
+        controller: pyglet.input.Controller, dpleft: bool, dpright: bool, dpup: bool, dpdown: bool
+    ):
+        previous_mapping(controller, dpleft, dpright, dpup, dpdown)
+        action(controller, dpleft, dpright, dpup, dpdown)
+
+    controller.on_dpad_motion = handler
 
 
 class ControllerManagerWidget(QWidget):

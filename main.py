@@ -11,7 +11,6 @@ from loguru import logger
 import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
-import pyqtgraph as qtg
 from PySide6.QtCore import (
     QSize,
     QSettings,
@@ -56,9 +55,10 @@ import shortuuid
 
 import xbee
 
+from enums import Cardinal
 from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
-from ui.plots import BatteryGraph, StickVisual
+from ui.plots import BatteryGraph, StickVisual, PovVisual
 from ui.mjpeg import MJPEGViewer
 
 from components import controllers, ControllerManagerWidget, begin_controller_backend
@@ -96,6 +96,7 @@ class StateManager:
 class MainWindow(QMainWindow):
     left_stick_update = Signal(pyglet.input.Controller, float, float)
     right_stick_update = Signal(pyglet.input.Controller, float, float)
+    pov_update = Signal(pyglet.input.Controller, bool, bool, bool, bool)
 
     def __init__(self, app: QApplication | QCoreApplication, dc_log_queue: queue.Queue):
         super().__init__()
@@ -174,6 +175,7 @@ class MainWindow(QMainWindow):
 
         for controller in self.controller_manager.controllers:
             controllers.map_stick(controller, self.controller_stick_action)
+            controllers.map_pov(controller, self.controller_dpad_action)
 
         self.controller_manager.on_connected.connect(self.controller_connected_handler)
         self.controller_manager.on_disconnected.connect(
@@ -183,6 +185,7 @@ class MainWindow(QMainWindow):
 
         self.left_stick_update.connect(self.update_left_stick_visuals)
         self.right_stick_update.connect(self.update_right_stick_visuals)
+        self.pov_update.connect(self.update_dpad_visuals)
 
         # Drive
         self.state.left_power = 0
@@ -373,6 +376,7 @@ class MainWindow(QMainWindow):
             self.serial_connect_button,
             self.stick_visual_left,
             self.stick_visual_right,
+            self.pov_visual,
         ) = self.connection_layout(self.settings)
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
@@ -627,6 +631,11 @@ class MainWindow(QMainWindow):
         right_stick_visual.plot(0, 0)
         controller_right_layout.addWidget(right_stick_visual)
 
+        pov_visual = PovVisual()
+        pov_visual.setFixedSize(QSize(100, 100))
+        pov_visual.plot(Cardinal.CENTER)
+        controller_right_layout.addWidget(pov_visual)
+
         # Comm
         comm_widget = QWidget()
         splitter.addWidget(comm_widget)
@@ -714,7 +723,7 @@ class MainWindow(QMainWindow):
             lambda val: settings.setValue("comm/escaped", val == "API Escaped")
         )
 
-        return layout, port_combo, connect_button, left_stick_visual, right_stick_visual
+        return layout, port_combo, connect_button, left_stick_visual, right_stick_visual, pov_visual
 
     def about_layout(self):
         layout = QHBoxLayout()
@@ -1059,6 +1068,7 @@ class MainWindow(QMainWindow):
     # Controller
     def controller_connected_handler(self, controller: pyglet.input.Controller):
         controllers.map_stick(controller, self.controller_stick_action)
+        controllers.map_pov(controller, self.controller_dpad_action)
         logger.success(f"Controller connected: {controller.name}")
         modal = QCustomModals.InformationModal(
             title="Controllers", 
@@ -1114,6 +1124,17 @@ class MainWindow(QMainWindow):
         ):
             self.right_stick_update.emit(controller, xvalue, yvalue)
 
+    def controller_dpad_action(
+            self,
+            controller: pyglet.input.Controller,
+            left: bool,
+            down: bool,
+            right: bool,
+            up: bool,
+    ):
+        if controller == self.controller_manager.get_controllers()[0]:
+            self.pov_update.emit(controller, left, down, right, up)
+
     def update_left_stick_visuals(
         self, controller: pyglet.input.Controller, xvalue: float, yvalue: float
     ):
@@ -1137,6 +1158,32 @@ class MainWindow(QMainWindow):
                 xvalue,
                 yvalue,
             )
+
+    def update_dpad_visuals(self, controller: pyglet.input.Controller, dpleft: bool, dpright: bool, dpup: bool, dpdown: bool):
+        if controller != self.controller_manager.get_controllers()[0]:
+            return
+        
+        if self.tabs.currentIndex() == 1:
+            if dpleft and dpup:
+                cardinal = Cardinal.NORTHWEST
+            elif dpleft and dpdown:
+                cardinal = Cardinal.SOUTHWEST
+            elif dpright and dpup:
+                cardinal = Cardinal.NORTHEAST
+            elif dpright and dpdown:
+                cardinal = Cardinal.SOUTHEAST
+            elif dpup:
+                cardinal = Cardinal.NORTH
+            elif dpdown:
+                cardinal = Cardinal.SOUTH
+            elif dpleft:
+                cardinal = Cardinal.WEST
+            elif dpright:
+                cardinal = Cardinal.EAST
+            else:
+                cardinal = Cardinal.CENTER
+
+            self.pov_visual.plot(cardinal)
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)

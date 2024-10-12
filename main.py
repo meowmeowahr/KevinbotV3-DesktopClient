@@ -20,6 +20,8 @@ from PySide6.QtCore import (
     QCoreApplication,
     Signal,
     QCommandLineParser,
+    QBuffer,
+    QIODevice,
 )
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import (
@@ -40,7 +42,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QCheckBox,
     QErrorMessage,
-    QPlainTextEdit,
     QScrollArea,
     QMessageBox,
     QSlider,
@@ -489,8 +490,8 @@ class MainWindow(QMainWindow):
         )
         comm_layout.addWidget(hide_sys_ports)
 
-        address_details = QLabel("IP Address (preferred) or host to connect to")
-        comm_layout.addWidget(address_details)
+        cam_addr_details = QLabel("IP Address (preferred) or host of MJPEG FPV stream")
+        comm_layout.addWidget(cam_addr_details)
 
         camera_input = QLineEdit()
         camera_input.setText(self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str))  # type: ignore
@@ -808,9 +809,19 @@ class MainWindow(QMainWindow):
             ("JetBrains Mono Font", "assets/fonts/JetBrains_Mono/OFL.txt"),
         ]:
 
-            license_viewer = QPlainTextEdit()
-            with open(license[1], "r") as file:
-                license_viewer.setPlainText(file.read())
+            license_viewer = QTextEdit()
+            license_viewer.setReadOnly(True)
+            try:
+                with open(license[1], "r") as file:
+                    license_viewer.setText(file.read())
+            except FileNotFoundError:
+                buffer = QBuffer()
+                buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                qta.icon("mdi6.alert", color="#f44336").pixmap(QSize(64, 64)).save(buffer, "PNG")
+                encoded = buffer.data().toBase64().toStdString()
+                license_viewer.setText(f"<img src=\"data:image/png;base64, {encoded}\" alt=\"Red dot\"/><br>"
+                                       f"License file '{license[1]}' not found.<br>There was an error locating the license file. "
+                                       "A copy of it should be included in the source and binary distributions.")
             licenses_tabs.addTab(license_viewer, license[0])
 
         tabs.addTab(licenses_tabs, "License", qta.icon("mdi6.gavel"))

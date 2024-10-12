@@ -53,6 +53,12 @@ class XBeeManager(QObject):
         except serial.SerialException as e:
             self.on_error.emit(f"Serial error: {str(e)}")
 
+    def halt(self):
+        if self.xbee:
+            self.xbee.halt()
+        else:
+            logger.warning("Could not halt non-existent XBee connection")
+
     def is_open(self) -> bool:
         """Check if the serial port is open."""
         return self.serial is not None and self.serial.is_open

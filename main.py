@@ -1,5 +1,6 @@
 import queue
 import sys
+import os
 import platform
 import threading
 import time
@@ -1262,6 +1263,8 @@ class MainWindow(QMainWindow):
                 return
 
         self.end_communication()
+        self.xbee.halt()
+        
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())
         if not self.isMaximized():
@@ -1269,8 +1272,6 @@ class MainWindow(QMainWindow):
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
 
-        # Kill app in case of frozen threads due to xbee being unplugged while connected
-        sys.exit()  # ? There should be a better way to exit the application?
 
 
 def parse(app):

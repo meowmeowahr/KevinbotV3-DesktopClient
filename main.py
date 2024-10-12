@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         logger.info(f"Desktop Client ID is {self.state.id}")
 
         self.state.camera_address = self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str)  # type: ignore
-        logger.info(f"Robot Network Host: {self.state.camera_address}")
+        logger.info(f"Robot FPV MJPEG Host: {self.state.camera_address}")
 
         # Theme
         theme = self.settings.value("window/theme", "dark", type=str)

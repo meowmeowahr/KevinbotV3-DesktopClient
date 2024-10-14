@@ -1,5 +1,6 @@
 import queue
 import sys
+import os
 import platform
 import threading
 import time
@@ -465,6 +466,19 @@ class MainWindow(QMainWindow):
 
         toolbox = QToolBox()
         layout.addWidget(toolbox)
+
+        system_widget = QWidget()
+        toolbox.addItem(system_widget, "System")
+
+        system_layout = QVBoxLayout()
+        system_widget.setLayout(system_layout)
+
+        system_warning = WarningBar("Restart required to apply theme")
+        system_layout.addWidget(system_warning)
+
+        xcb_check = QCheckBox("Force XCB Platform")
+        xcb_check.clicked.connect(lambda: self.set_xcb(xcb_check.isChecked()))
+        system_layout.addWidget(xcb_check)
 
         theme_widget = QWidget()
         toolbox.addItem(theme_widget, "Theme and Appearance")
@@ -1229,29 +1243,25 @@ class MainWindow(QMainWindow):
             return
 
         if self.tabs.currentIndex() == 1:
-            if dpleft and dpup:
-                cardinal = Cardinal.NORTHWEST
-            elif dpleft and dpdown:
-                cardinal = Cardinal.SOUTHWEST
-            elif dpright and dpup:
-                cardinal = Cardinal.NORTHEAST
-            elif dpright and dpdown:
-                cardinal = Cardinal.SOUTHEAST
-            elif dpup:
-                cardinal = Cardinal.NORTH
-            elif dpdown:
-                cardinal = Cardinal.SOUTH
-            elif dpleft:
-                cardinal = Cardinal.WEST
-            elif dpright:
-                cardinal = Cardinal.EAST
-            else:
-                cardinal = Cardinal.CENTER
+            direction_map = {
+                (True, False, True, False): Cardinal.NORTHWEST,
+                (True, False, False, True): Cardinal.SOUTHWEST,
+                (False, True, True, False): Cardinal.NORTHEAST,
+                (False, True, False, True): Cardinal.SOUTHEAST,
+                (False, False, True, False): Cardinal.NORTH,
+                (False, False, False, True): Cardinal.SOUTH,
+                (True, False, False, False): Cardinal.WEST,
+                (False, True, False, False): Cardinal.EAST,
+            }
+            cardinal = direction_map.get((dpleft, dpright, dpup, dpdown), Cardinal.CENTER)
 
             self.pov_visual.plot(cardinal)
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
+
+    def set_xcb(self, xcb: bool):
+        self.settings.setValue("platform/force_xcb", xcb)
 
     def set_camera_address(self, host: str):
         self.settings.setValue("comm/camera_address", host)
@@ -1321,6 +1331,10 @@ def main(app: QApplication | None = None):
     logger.add(dc_log_queue.put, colorize=True, level=settings.value("logging/level", 20, type=int))  # type: ignore
 
     if not app:
+        if platform.system() == "Linux":
+            if settings.value("platform/force_xcb", False, type=bool):
+                os.environ["QT_QPA_PLATFORM"] = "xcb"
+                logger.debug("Forcing XCB Qt Platform")
         app = QApplication(sys.argv)
         app.setApplicationVersion(__version__)
         app.setWindowIcon(QIcon("assets/icons/icon.svg"))

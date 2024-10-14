@@ -103,6 +103,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"Kevinbot Desktop Client {__version__}")
         self.setWindowIcon(QIcon("assets/icons/icon.svg"))
+        self.setDockOptions(QMainWindow.DockOption.AnimatedDocks) # No tabs in docks
 
         self.dc_log_queue = dc_log_queue
         self.log_converter = ansi2html.Ansi2HTMLConverter()
@@ -270,13 +271,15 @@ class MainWindow(QMainWindow):
         self.state_dock = QDockWidget("State")
         self.state_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable)
         self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.state_dock)
-        print(self.state_dock.window().windowType())
 
         self.state_widget = QWidget()
         self.state_dock.setWidget(self.state_widget)
 
+        self.state_layout = QVBoxLayout()
+        self.state_widget.setLayout(self.state_layout)
+
         self.state_bar = QHBoxLayout()
-        self.state_widget.setLayout(self.state_bar)
+        self.state_layout.addLayout(self.state_bar)
 
         self.state_bar.addStretch()
 
@@ -328,9 +331,16 @@ class MainWindow(QMainWindow):
             self.state_bar.addLayout(layout)
 
         self.state_bar.addStretch()
+        
+        self.indicators_dock = QDockWidget("Indicators")
+        self.indicators_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.indicators_dock)
+
+        self.indicators_widget = QWidget()
+        self.indicators_dock.setWidget(self.indicators_widget)
 
         self.indicators_grid = QGridLayout()
-        self.state_bar.addLayout(self.indicators_grid)
+        self.indicators_widget.setLayout(self.indicators_grid)
 
         self.serial_indicator_led = ColorBlock()
         self.serial_indicator_led.set_color("#f44336")
@@ -365,7 +375,7 @@ class MainWindow(QMainWindow):
             QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold)
         )
         self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(self.state_label)
+        self.state_layout.addWidget(self.state_label)
 
         self.state_label_timer = QTimer()
         self.state_label_timer.timeout.connect(self.pulse_state_label)

@@ -476,7 +476,7 @@ class MainWindow(QMainWindow):
         system_warning = WarningBar("Restart required to apply theme")
         system_layout.addWidget(system_warning)
 
-        xcb_check = QCheckBox("Force XCB Platform")
+        xcb_check = QCheckBox("Force XCB Platform on Linux")
         xcb_check.clicked.connect(lambda: self.set_xcb(xcb_check.isChecked()))
         system_layout.addWidget(xcb_check)
 

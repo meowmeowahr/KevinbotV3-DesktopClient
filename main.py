@@ -1,6 +1,5 @@
 import queue
 import sys
-import os
 import platform
 import threading
 import time
@@ -49,6 +48,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QLineEdit,
     QToolButton,
+    QDockWidget,
 )
 from Custom_Widgets.QCustomModals import QCustomModals
 
@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
         self.main_layout = QVBoxLayout()
         self.main.setLayout(self.main_layout)
 
-        self.main.setStyleSheet(
+        self.setStyleSheet(
             "#enable_button, #disable_button, #estop_button {"
             "font-size: 24px;"
             "font-weight: bold;"
@@ -267,8 +267,16 @@ class MainWindow(QMainWindow):
         )
 
         # * State Bar
+        self.state_dock = QDockWidget("State")
+        self.state_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable)
+        self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.state_dock)
+        print(self.state_dock.window().windowType())
+
+        self.state_widget = QWidget()
+        self.state_dock.setWidget(self.state_widget)
+
         self.state_bar = QHBoxLayout()
-        self.main_layout.addLayout(self.state_bar)
+        self.state_widget.setLayout(self.state_bar)
 
         self.state_bar.addStretch()
 
@@ -1295,7 +1303,7 @@ def controller_backend():  # pragma: no cover
 
 def main(app: QApplication | None = None):
     # Log queue and ansi2html converter
-    dc_log_queue = queue.Queue()
+    dc_log_queue: queue.Queue[str] = queue.Queue()
 
     settings = QSettings("meowmeowahr", "KevinbotDesktopClient")
     logger.remove()

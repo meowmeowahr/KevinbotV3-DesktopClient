@@ -26,10 +26,12 @@ Drive and operate Kevinbot using a regular PC, gaming controllers, and a USB-con
 
 ## Known Issues
 
-### App crashes on launch with PySide 6.8.0
+### Q: App crashes on launch with PySide 6.8.0
 
 This is related to star imports being broken again.
 
 https://bugreports.qt.io/browse/PYSIDE-2888
 <br>
 https://github.com/spyder-ide/qtpy/issues/494
+
+### A: Update your PySide6 version to 6.8.0.1

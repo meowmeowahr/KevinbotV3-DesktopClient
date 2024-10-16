@@ -309,6 +309,16 @@ class MainWindow(QMainWindow):
 
         self.state_bar.addStretch()
 
+        self.battery_dock = QDockWidget("Batteries")
+        self.battery_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.battery_dock)
+
+        self.battery_widget = QWidget()
+        self.battery_dock.setWidget(self.battery_widget)
+
+        self.battery_layout = QHBoxLayout()
+        self.battery_widget.setLayout(self.battery_layout)
+
         # Battery
         self.battery_graphs = []
         self.battery_volt_labels = []
@@ -329,7 +339,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(label)
             layout.addWidget(volt)
 
-            self.state_bar.addLayout(layout)
+            self.battery_layout.addLayout(layout)
 
         self.state_bar.addStretch()
         
@@ -477,6 +487,7 @@ class MainWindow(QMainWindow):
         system_layout.addWidget(system_warning)
 
         xcb_check = QCheckBox("Force XCB Platform on Linux")
+        xcb_check.setChecked(self.settings.value("platform/force_xcb", type=bool)) # type: ignore
         xcb_check.clicked.connect(lambda: self.set_xcb(xcb_check.isChecked()))
         system_layout.addWidget(xcb_check)
 

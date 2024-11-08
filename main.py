@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
 
         self.tick_timer = QTimer()
         self.tick_timer.setInterval(1000)
-        self.tick_timer.timeout.connect(self.tick_checker)
+        self.tick_timer.timeout.connect(self.background_updates)
         self.tick_timer.start()
 
         self.controller_timer = QTimer()
@@ -201,6 +201,7 @@ class MainWindow(QMainWindow):
 
         # Communications
         self.robot = kevinbotlib.MqttKevinbot()
+        self.drive = kevinbotlib.Drivebase(self.robot)
 
         # Tabson_message
         self.tabs = QTabWidget()
@@ -849,10 +850,13 @@ class MainWindow(QMainWindow):
 
     # State
     def request_estop(self):
-        self.xbee.broadcast("kevinbot.request.estop")
+        self.robot.e_stop()
 
     def request_enable(self, enable: bool):
-        self.xbee.broadcast(f"kevinbot.request.enable={enable}")
+        if enable:
+            self.robot.request_enable()
+        else:
+            self.robot.request_disable()
 
     # Logging
     def update_logs(self, log_area: QTextEdit):
@@ -952,7 +956,7 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if (not self.state.connected) or self.state.waiting_for_handshake:
+        if (not self.robot.get_state().connected) or self.state.waiting_for_handshake:
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
@@ -966,12 +970,12 @@ class MainWindow(QMainWindow):
                 self.state.left_power = yvalue
             else:
                 self.state.left_power = 0
-            self.xbee.broadcast(
-                f"drive={round(self.state.left_power*100)},{round(self.state.right_power*100)}"
+            self.drive.drive_at_power(
+                self.state.left_power, self.state.right_power
             )
 
     def drive_right(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if (not self.state.connected) or self.state.waiting_for_handshake:
+        if (not self.robot.get_state().connected) or self.state.waiting_for_handshake:
             return
 
         if controller == self.controller_manager.get_controllers()[0]:
@@ -985,8 +989,8 @@ class MainWindow(QMainWindow):
                 self.state.right_power = yvalue
             else:
                 self.state.right_power = 0
-            self.xbee.broadcast(
-                f"drive={round(self.state.left_power*100)},{round(self.state.right_power*100)}"
+            self.drive.drive_at_power(
+                self.state.left_power, self.state.right_power
             )
 
     def open_connection(self):
@@ -1003,7 +1007,7 @@ class MainWindow(QMainWindow):
         logger.info("Communication ended")
 
     # * Background checks
-    def tick_checker(self):
+    def background_updates(self):
         if self.robot.connected:
             self.coretick_indicator_led.set_color("#ffffff")
             # if self.state.tick_speed:
@@ -1022,6 +1026,14 @@ class MainWindow(QMainWindow):
         if self.state.waiting_for_handshake and self.robot.connected:
             self.state.waiting_for_handshake = False
             self.state_label.setText("Connected")
+
+        if not self.robot.get_state().connected:
+            return
+        
+        if self.robot.get_state().enabled:
+            self.state_label.setText("Robot Enabled")
+        else:
+            self.state_label.setText("Robot Disabled")
 
     def controller_checker(self):
         if len(self.controller_manager.get_controller_ids()) > 0:

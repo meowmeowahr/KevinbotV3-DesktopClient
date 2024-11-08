@@ -56,6 +56,8 @@ from Custom_Widgets.QCustomModals import QCustomModals
 import ansi2html
 import shortuuid
 
+import kevinbotlib
+
 import xbee
 
 from enums import Cardinal
@@ -89,6 +91,8 @@ class StateManager:
     id: str = ""
     tick_speed: float | None = None
     camera_address: str = "http://kevinbot.local"
+    mqtt_host: str = "http://10.0.0.1/"
+    mqtt_port: int = 1883
     last_system_tick: float = time.time()
     last_core_tick: float = time.time()
     left_power: float = 0.0
@@ -129,6 +133,7 @@ class MainWindow(QMainWindow):
         logger.info(f"Desktop Client ID is {self.state.id}")
 
         self.state.camera_address = self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str)  # type: ignore
+        self.state.mqtt_host = self.settings.value("comm/mqtt_host", "http://10.0.0.1/", type=str)  # type: ignore
         logger.info(f"Robot FPV MJPEG Host: {self.state.camera_address}")
 
         # Theme
@@ -152,9 +157,6 @@ class MainWindow(QMainWindow):
 
         # Timers
         self.logger_timer = QTimer()
-        self.handshake_timer = QTimer()
-        self.handshake_timer.setInterval(1500)
-        self.handshake_timer.timeout.connect(self.handshake_timeout_handler)
 
         self.tick_timer = QTimer()
         self.tick_timer.setInterval(1000)
@@ -198,19 +200,9 @@ class MainWindow(QMainWindow):
         self.right_stick_update.connect(self.drive_right)
 
         # Communications
-        self.xbee = XBeeManager(
-            self.settings.value("comm/port", ""),
-            self.settings.value("comm/baud", 921600, type=int),  # type: ignore
-            self.settings.value("comm/fc", False, type=bool),  # type: ignore
-            self.settings.value("comm/escaped", False, type=bool),  # type: ignore
-        )
-        self.xbee.on_error.connect(self.serial_error_handler)
-        self.xbee.on_reject.connect(self.serial_reject_handler)
-        self.xbee.on_open.connect(self.serial_open_handler)
-        self.xbee.on_close.connect(self.serial_close_handler)
-        self.xbee.on_data.connect(self.serial_data_handler)
+        self.robot = kevinbotlib.MqttKevinbot()
 
-        # Tabs
+        # Tabson_message
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(36, 36))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
@@ -544,6 +536,16 @@ class MainWindow(QMainWindow):
         )
         comm_layout.addWidget(camera_input)
 
+        mqtt_host_defails = QLabel("IP Address (preferred) or host of KevinbotLib MQTT Interface")
+        comm_layout.addWidget(mqtt_host_defails)
+
+        mqtt_host_input = QLineEdit()
+        mqtt_host_input.setText(self.settings.value("comm/mqtt_host", "http://10.0.0.1/", type=str))  # type: ignore
+        mqtt_host_input.textChanged.connect(
+            lambda: self.set_mqtt_host(mqtt_host_input.text())
+        )
+        comm_layout.addWidget(mqtt_host_input)
+
         # Logging
         logging_widget = QWidget()
         toolbox.addItem(logging_widget, "Logging")
@@ -736,42 +738,6 @@ class MainWindow(QMainWindow):
         comm_options_layout.addWidget(connect_button, 4, 1)
 
         # Option setters
-        port_combo.currentTextChanged.connect(lambda val: self.xbee.set_port(val))
-        baud_combo.currentTextChanged.connect(lambda val: self.xbee.set_baud(int(val)))
-        flow_check.stateChanged.connect(lambda val: self.xbee.set_flow_control(val))
-        api_mode_combo.currentTextChanged.connect(
-            lambda val: self.xbee.set_api_escaped(val == "API Escaped")
-        )
-
-        # QSettings getters
-        port_combo.addItems(
-            self.xbee.get_available_ports(
-                not self.settings.value("comm/hide_sys_ports", False, type=bool)
-            )
-        )
-        if settings.value("comm/port", "COM3") in self.xbee.get_available_ports(
-            not self.settings.value("comm/hide_sys_ports", False)
-        ):
-            port_combo.setCurrentText(settings.value("comm/port", "COM3"))  # type: ignore
-        if port_combo.count() == 0:
-            connect_button.setEnabled(False)
-        baud_combo.setCurrentText(str(settings.value("comm/baud", 230400, type=int)))
-        flow_check.setChecked(settings.value("comm/fc", False, type=bool))  # type: ignore
-        api_mode_combo.setCurrentText(settings.value("comm/escaped", False, type=bool) and "API Escaped" or "API Unescaped")  # type: ignore
-
-        # QSettings setters
-        port_combo.currentTextChanged.connect(
-            lambda val: settings.setValue("comm/port", val)
-        )
-        baud_combo.currentTextChanged.connect(
-            lambda val: settings.setValue("comm/baud", int(val))
-        )
-        flow_check.stateChanged.connect(
-            lambda val: settings.setValue("comm/fc", val == 2)
-        )
-        api_mode_combo.currentTextChanged.connect(
-            lambda val: settings.setValue("comm/escaped", val == "API Escaped")
-        )
 
         return (
             layout,
@@ -918,17 +884,8 @@ class MainWindow(QMainWindow):
 
     # Serial
     def reload_ports(self):
-        previous_port = self.port_combo.currentText()
         self.port_combo.clear()
-        self.port_combo.addItems(
-            self.xbee.get_available_ports(
-                not self.settings.value("comm/hide_sys_ports", False, type=bool)
-            )
-        )
-        if previous_port in self.xbee.get_available_ports(
-            not self.settings.value("comm/hide_sys_ports", False, type=bool)
-        ):
-            self.port_combo.setCurrentText(previous_port)
+        self.port_combo.addItem("KEVINBOTLIB")
 
         if self.port_combo.count() == 0:
             self.serial_connect_button.setEnabled(False)
@@ -993,59 +950,6 @@ class MainWindow(QMainWindow):
         if not self.state.estop:
             self.state_label.setText("No Communications")
 
-    # * Serial Data Recieve
-    def serial_data_handler(self, data: dict):
-        logger.trace(f"Received packet: {data}")
-        command: str = data["rf_data"].decode("utf-8").split("=", 1)[0]
-        if len(data["rf_data"].decode("utf-8").split("=", 1)) > 1:
-            value: str | None = data["rf_data"].decode("utf-8").split("=", 1)[1]
-        else:
-            value = None
-
-        match command:
-            case "connection.handshake.end":
-                if value == f"DC_{self.state.id}":
-                    self.state.waiting_for_handshake = False
-                    # There is no need to set the status label, since the handshake includes an enable message
-            case "system.estop":
-                self.state.estop = True
-                self.state_label.setText("Emergency Stopped")
-                self.xbee.close()
-            case "kevinbot.enabled":
-                self.state.enabled = value in [
-                    "True",
-                    "true",
-                    "1",
-                    "on",
-                    "ON",
-                    "enabled",
-                    "ENABLED",
-                ]
-                self.state_label.setText(
-                    "Robot Enabled" if self.state.enabled else "Robot Disabled"
-                )
-            case "system.tick.speed":
-                if not value:
-                    return
-
-                try:
-                    tick = float(value)
-                except ValueError:
-                    tick = None
-
-                self.state.tick_speed = tick
-            case "system.uptime":
-                self.state.last_system_tick = time.time()
-            case "core.uptime":
-                self.state.last_core_tick = time.time()
-            case "bms.voltages":
-                if not value:
-                    return
-
-                for index, i in enumerate(value.split(",")):
-                    self.battery_volt_labels[index].setText(f"{int(i)/10}v")
-                    self.battery_graphs[index].add(int(i) / 10)
-
     # * Drive
     def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
         if (not self.state.connected) or self.state.waiting_for_handshake:
@@ -1089,50 +993,35 @@ class MainWindow(QMainWindow):
         if self.state.connected:
             self.end_communication()
             return
-        self.xbee.open()
+        
+        self.robot.connect("kevinbot", self.settings.value("comm/mqtt_host", "http://10.0.0.1/"), self.settings.value("comm/mqtt_port", 1883)) # type: ignore
+
         self.state.waiting_for_handshake = True
-        self.begin_handshake()
+        self.state_label.setText("Awaiting Handshake")
 
     def end_communication(self):
-        if self.state.connected:
-            self.xbee.broadcast(
-                f"connection.disconnect=DC_{self.state.id}|{__version__}|kevinbot.dc"
-            )
-            self.xbee.close()
-            logger.info("Communication ended")
-
-    def begin_handshake(self):
-        if self.state.connected:
-            self.state_label.setText("Awaiting Handshake")
-            self.handshake_timer.start()
-
-    def handshake_timeout_handler(self):
-        if not self.state.connected:
-            self.handshake_timer.stop()
-            return
-
-        if self.state.waiting_for_handshake:
-            self.xbee.broadcast(
-                f"connection.connect=DC_{self.state.id}|{__version__}|kevinbot.dc"
-            )
-        else:
-            self.handshake_timer.stop()
+        logger.info("Communication ended")
 
     # * Background checks
     def tick_checker(self):
-        if self.state.connected:
-            if self.state.tick_speed:
-                if time.time() - self.state.last_core_tick > self.state.tick_speed:
-                    self.coretick_indicator_led.set_color("#f44336")
-                else:
-                    self.coretick_indicator_led.set_color("#4caf50")
+        if self.robot.connected:
+            self.coretick_indicator_led.set_color("#ffffff")
+            # if self.state.tick_speed:
+            #     if time.time() - self.state.last_core_tick > self.state.tick_speed:
+            #         self.coretick_indicator_led.set_color("#f44336")
+            #     else:
+            #         self.coretick_indicator_led.set_color("#4caf50")
 
-                if time.time() - self.state.last_system_tick > self.state.tick_speed:
-                    self.systick_indicator_led.set_color("#f44336")
-                else:
-                    self.systick_indicator_led.set_color("#4caf50")
-            else:
-                logger.warning("No tick speed set, skipping tick check")
+            #     if time.time() - self.state.last_system_tick > self.state.tick_speed:
+            #         self.systick_indicator_led.set_color("#f44336")
+            #     else:
+            #         self.systick_indicator_led.set_color("#4caf50")
+            # else:
+            #     logger.warning("No tick speed set, skipping tick check")
+
+        if self.state.waiting_for_handshake and self.robot.connected:
+            self.state.waiting_for_handshake = False
+            self.state_label.setText("Connected")
 
     def controller_checker(self):
         if len(self.controller_manager.get_controller_ids()) > 0:
@@ -1279,30 +1168,17 @@ class MainWindow(QMainWindow):
         self.state.camera_address = host
         self.fpv.mjpeg_thread.stream_url = host
 
+    def set_mqtt_host(self, host: str):
+        self.settings.setValue("comm/mqtt_host", host)
+        self.state.mqtt_host = host
+
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)
 
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.wait()
 
-        if self.state.connected:
-            msg = QMessageBox(self)
-            msg.setWindowTitle("Close while Connected?")
-            msg.setText(
-                "Are you sure you want to close the application while connected?"
-            )
-            msg.setStandardButtons(
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            msg.setIcon(QMessageBox.Icon.Question)
-            result = msg.exec()
-            if result == QMessageBox.StandardButton.No:
-                self.setDisabled(False)
-                event.ignore()
-                return
-
         self.end_communication()
-        self.xbee.halt()
         
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())

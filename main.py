@@ -842,19 +842,6 @@ class MainWindow(QMainWindow):
                     file.write(log_area.toPlainText())
 
     # Connection
-
-    def serial_error_handler(self, error: str):
-        self.state.connected = False
-
-        logger.error(f"Serial error: {error}")
-
-        msg = QErrorMessage(self)
-        msg.setWindowTitle("Serial Error")
-        msg.showMessage(f"Serial Error: {error}")
-        msg.exec()
-
-        self.state_label.setText("No Communications")
-
     def pulse_state_label(self):
         if self.state_label_timer_runs == 5:
             self.state_label_timer_runs = 0
@@ -907,18 +894,29 @@ class MainWindow(QMainWindow):
             )
 
     def open_connection(self):
-        if self.state.connected:
+        if self.robot.connected:
             self.end_communication()
             return
-        
-        if not self.robot.connected:
+        else:
             self.robot.connect("kevinbot", self.settings.value("comm/mqtt_host", "http://10.0.0.1/"), self.settings.value("comm/mqtt_port", 1883)) # type: ignore
+            self.robot.callback = self.update_states
 
         self.state.waiting_for_handshake = True
         self.state_label.setText("Awaiting Handshake")
 
+        self.serial_connect_button.setText("Disconnect")
+
     def end_communication(self):
         logger.info("Communication ended")
+
+        # avoid potential issues
+        self.robot.callback = None
+
+        self.state_label.setText("No Communications")
+        self.connect_indicator_led.set_color("#f44336")
+        self.serial_connect_button.setText("Connect")
+        if self.robot.connected:
+            self.robot.disconnect()
 
     # * Robot state
     def update_states(self, topics: list[str], value: str):

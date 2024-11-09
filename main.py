@@ -40,9 +40,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFileDialog,
     QGridLayout,
-    QComboBox,
     QCheckBox,
-    QErrorMessage,
     QScrollArea,
     QSlider,
     QFrame,
@@ -201,8 +199,8 @@ class MainWindow(QMainWindow):
         self.state.left_power = 0
         self.state.right_power = 0
 
-        self.left_stick_update.connect(self.drive_left)
-        self.right_stick_update.connect(self.drive_right)
+        self.left_stick_update.connect(self.drivecmd)
+        self.right_stick_update.connect(self.drivecmd)
 
         # Tabs
         self.tabs = QTabWidget()
@@ -694,8 +692,6 @@ class MainWindow(QMainWindow):
         connect_button.clicked.connect(self.open_connection)
         comm_options_layout.addWidget(connect_button, 4, 1)
 
-        # Option setters
-
         return (
             layout,
             connect_button,
@@ -855,43 +851,25 @@ class MainWindow(QMainWindow):
         self.state_label_timer_runs += 1
 
     # * Drive
-    def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
+    def drivecmd(self, controller: pyglet.input.Controller, xvalue, yvalue):
         if (not self.robot.get_state().connected) or self.state.waiting_for_handshake:
             return
-
+            
         if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.state.left_power * 100) == (
-                round(yvalue * 100)
-                if abs(yvalue) > constants.CONTROLLER_DEADBAND
-                else 0
-            ):
+            def apply_scaled_deadband(val, invert: bool = True):
+                if constants.CONTROLLER_DEADBAND > abs(val):
+                    return 0
+                val =  (val * ((1 - constants.CONTROLLER_DEADBAND) if val > 0 else (1 + constants.CONTROLLER_DEADBAND))) + (-constants.CONTROLLER_DEADBAND if val > 0 else constants.CONTROLLER_DEADBAND)
+                return -val if invert else val
+                
+            left_power = max(-1, min(1, apply_scaled_deadband(controller.lefty)))
+            right_power = max(-1, min(1, apply_scaled_deadband(controller.righty)))
+            if round(left_power, 2) == round(self.state.left_power, 2) and round(right_power, 2) == round(self.state.right_power, 2):
                 return
-            if abs(yvalue) > constants.CONTROLLER_DEADBAND:
-                self.state.left_power = yvalue
-            else:
-                self.state.left_power = 0
-            self.drive.drive_at_power(
-                self.state.left_power, self.state.right_power
-            )
+            self.state.left_power = left_power
+            self.state.right_power = right_power
 
-    def drive_right(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if (not self.robot.get_state().connected) or self.state.waiting_for_handshake:
-            return
-
-        if controller == self.controller_manager.get_controllers()[0]:
-            if round(self.state.right_power * 100) == (
-                round(yvalue * 100)
-                if abs(yvalue) > constants.CONTROLLER_DEADBAND
-                else 0
-            ):
-                return
-            if abs(yvalue) > constants.CONTROLLER_DEADBAND:
-                self.state.right_power = yvalue
-            else:
-                self.state.right_power = 0
-            self.drive.drive_at_power(
-                self.state.left_power, self.state.right_power
-            )
+            self.drive.drive_at_power(self.state.left_power, self.state.right_power)
 
     def open_connection(self):
         if self.robot.connected:
@@ -950,8 +928,11 @@ class MainWindow(QMainWindow):
             self.state_label.setText("Robot Disabled")
 
     def battery_update(self):
-        for index, graph in enumerate(self.battery_graphs):
-            graph.add(self.robot.get_state().battery.voltages[index])
+        if self.robot.connected:
+            for index, graph in enumerate(self.battery_graphs):
+                graph.add(self.robot.get_state().battery.voltages[index])
+            for index, label in enumerate(self.battery_volt_labels):
+                label.setText(f"{self.robot.get_state().battery.voltages[index]}v")
 
     def controller_checker(self):
         if len(self.controller_manager.get_controller_ids()) > 0:

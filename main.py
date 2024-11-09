@@ -44,7 +44,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QErrorMessage,
     QScrollArea,
-    QMessageBox,
     QSlider,
     QFrame,
     QLineEdit,
@@ -67,7 +66,6 @@ from ui.plots import BatteryGraph, StickVisual, PovVisual
 from ui.mjpeg import MJPEGViewer
 
 from components import controllers, ControllerManagerWidget, begin_controller_backend
-from components.xbee import XBeeManager
 
 import constants
 
@@ -155,19 +153,26 @@ class MainWindow(QMainWindow):
                 custom_colors=constants.CUSTOM_COLORS_DARK,
             )
 
+
+        # Communications
+        self.robot = kevinbotlib.MqttKevinbot()
+        self.robot.callback = self.update_states
+        self.drive = kevinbotlib.Drivebase(self.robot)
+
         # Timers
         self.logger_timer = QTimer()
-
-        self.tick_timer = QTimer()
-        self.tick_timer.setInterval(1000)
-        self.tick_timer.timeout.connect(self.background_updates)
-        self.tick_timer.start()
 
         self.controller_timer = QTimer()
         self.controller_timer.setInterval(1000)
         self.controller_timer.timeout.connect(self.controller_checker)
         self.controller_timer.start()
 
+        self.battery_timer = QTimer()
+        self.battery_timer.setInterval(750)
+        self.battery_timer.timeout.connect(self.battery_update)
+        self.battery_timer.start()
+
+        # Widget/Root Layout
         self.root_widget = QWidget()
         self.setCentralWidget(self.root_widget)
 
@@ -199,11 +204,7 @@ class MainWindow(QMainWindow):
         self.left_stick_update.connect(self.drive_left)
         self.right_stick_update.connect(self.drive_right)
 
-        # Communications
-        self.robot = kevinbotlib.MqttKevinbot()
-        self.drive = kevinbotlib.Drivebase(self.robot)
-
-        # Tabson_message
+        # Tabs
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(36, 36))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
@@ -313,7 +314,7 @@ class MainWindow(QMainWindow):
         self.battery_widget.setLayout(self.battery_layout)
 
         # Battery
-        self.battery_graphs = []
+        self.battery_graphs: list[BatteryGraph] = []
         self.battery_volt_labels = []
         for i in range(2):
             graph = BatteryGraph()
@@ -346,9 +347,9 @@ class MainWindow(QMainWindow):
         self.indicators_grid = QGridLayout()
         self.indicators_widget.setLayout(self.indicators_grid)
 
-        self.serial_indicator_led = ColorBlock()
-        self.serial_indicator_led.set_color("#f44336")
-        self.indicators_grid.addWidget(self.serial_indicator_led, 0, 0)
+        self.connect_indicator_led = ColorBlock()
+        self.connect_indicator_led.set_color("#f44336")
+        self.indicators_grid.addWidget(self.connect_indicator_led, 0, 0)
 
         self.systick_indicator_led = ColorBlock()
         self.systick_indicator_led.set_color("#f44336")
@@ -362,8 +363,8 @@ class MainWindow(QMainWindow):
         self.controller_led.set_color("#f44336")
         self.indicators_grid.addWidget(self.controller_led, 3, 0)
 
-        self.serial_indicator_label = QLabel("Serial")
-        self.indicators_grid.addWidget(self.serial_indicator_label, 0, 1)
+        self.connect_indicator_label = QLabel("Connected")
+        self.indicators_grid.addWidget(self.connect_indicator_label, 0, 1)
 
         self.systick_indicator_label = QLabel("Sys Tick")
         self.indicators_grid.addWidget(self.systick_indicator_label, 1, 1)
@@ -395,7 +396,6 @@ class MainWindow(QMainWindow):
         self.debug.setLayout(self.debug_layout(self.settings))
         (
             self.comm_layout,
-            self.port_combo,
             self.serial_connect_button,
             self.stick_visual_left,
             self.stick_visual_right,
@@ -514,18 +514,6 @@ class MainWindow(QMainWindow):
 
         comm_layout = QVBoxLayout()
         comm_widget.setLayout(comm_layout)
-
-        hide_sys_details = QLabel(
-            "Hiding system ports will hide ports beginning with /dev/ttyS*"
-        )
-        comm_layout.addWidget(hide_sys_details)
-
-        hide_sys_ports = QCheckBox("Hide System Ports")
-        hide_sys_ports.setChecked(settings.value("comm/hide_sys_ports", False, type=bool))  # type: ignore
-        hide_sys_ports.clicked.connect(
-            lambda: self.set_hide_sys_ports(hide_sys_ports.isChecked())
-        )
-        comm_layout.addWidget(hide_sys_ports)
 
         cam_addr_details = QLabel("IP Address (preferred) or host of MJPEG FPV stream")
         comm_layout.addWidget(cam_addr_details)
@@ -701,38 +689,6 @@ class MainWindow(QMainWindow):
         comm_options_layout.setColumnStretch(1, 1)
         comm_layout.addLayout(comm_options_layout)
 
-        port_label = QLabel("Port")
-        comm_options_layout.addWidget(port_label, 0, 0)
-
-        baud_label = QLabel("Baud")
-        comm_options_layout.addWidget(baud_label, 1, 0)
-
-        flow_label = QLabel("Flow Control")
-        comm_options_layout.addWidget(flow_label, 2, 0)
-
-        api_label = QLabel("API Mode")
-        comm_options_layout.addWidget(api_label, 3, 0)
-
-        port_combo = QComboBox()
-        comm_options_layout.addWidget(port_combo, 0, 1, 1, 2)
-
-        baud_combo = QComboBox()
-        baud_combo.addItems(list(map(str, constants.BAUD_RATES)))
-        comm_options_layout.addWidget(baud_combo, 1, 1, 1, 2)
-
-        flow_check = QCheckBox("Enable")
-        comm_options_layout.addWidget(flow_check, 2, 1, 1, 2)
-
-        api_mode_combo = QComboBox()
-        api_mode_combo.addItem("API Escaped")
-        api_mode_combo.addItem("API Unescaped")
-        comm_options_layout.addWidget(api_mode_combo, 3, 1, 1, 2)
-
-        refresh_ports_button = QPushButton("Refresh")
-        refresh_ports_button.setIcon(qta.icon("mdi6.refresh"))
-        refresh_ports_button.clicked.connect(self.reload_ports)
-        comm_options_layout.addWidget(refresh_ports_button, 4, 2)
-
         connect_button = QPushButton("Connect")
         connect_button.setIcon(qta.icon("mdi6.wifi"))
         connect_button.clicked.connect(self.open_connection)
@@ -742,7 +698,6 @@ class MainWindow(QMainWindow):
 
         return (
             layout,
-            port_combo,
             connect_button,
             left_stick_visual,
             right_stick_visual,
@@ -886,19 +841,7 @@ class MainWindow(QMainWindow):
                 else:
                     file.write(log_area.toPlainText())
 
-    # Serial
-    def reload_ports(self):
-        self.port_combo.clear()
-        self.port_combo.addItem("KEVINBOTLIB")
-
-        if self.port_combo.count() == 0:
-            self.serial_connect_button.setEnabled(False)
-        else:
-            self.serial_connect_button.setEnabled(True)
-
-    def set_hide_sys_ports(self, hide: bool):
-        self.settings.setValue("comm/hide_sys_ports", hide)
-        self.reload_ports()
+    # Connection
 
     def serial_error_handler(self, error: str):
         self.state.connected = False
@@ -923,36 +866,6 @@ class MainWindow(QMainWindow):
         else:
             self.state_label.setStyleSheet("color: #f44336;")
         self.state_label_timer_runs += 1
-
-    def serial_reject_handler(self):
-        if not self.state.connected:
-            if not self.state_label_timer.isActive():
-                self.state_label_timer.start(100)
-        else:
-            logger.error(
-                "Something went seriously wrong, causing a command to be rejected"
-            )
-
-    def serial_open_handler(self):
-        self.state.connected = True
-        self.serial_connect_button.setText("Disconnect")
-        self.serial_indicator_led.set_color("#4caf50")
-
-        self.state.last_system_tick = time.time()
-        self.state.last_core_tick = time.time()
-
-        logger.success("Serial port opened")
-
-    def serial_close_handler(self):
-        self.state.connected = False
-        self.state.waiting_for_handshake = False
-        self.serial_connect_button.setText("Connect")
-        self.serial_indicator_led.set_color("#f44336")
-
-        logger.debug("Serial port closed")
-
-        if not self.state.estop:
-            self.state_label.setText("No Communications")
 
     # * Drive
     def drive_left(self, controller: pyglet.input.Controller, xvalue, yvalue):
@@ -998,7 +911,8 @@ class MainWindow(QMainWindow):
             self.end_communication()
             return
         
-        self.robot.connect("kevinbot", self.settings.value("comm/mqtt_host", "http://10.0.0.1/"), self.settings.value("comm/mqtt_port", 1883)) # type: ignore
+        if not self.robot.connected:
+            self.robot.connect("kevinbot", self.settings.value("comm/mqtt_host", "http://10.0.0.1/"), self.settings.value("comm/mqtt_port", 1883)) # type: ignore
 
         self.state.waiting_for_handshake = True
         self.state_label.setText("Awaiting Handshake")
@@ -1006,10 +920,11 @@ class MainWindow(QMainWindow):
     def end_communication(self):
         logger.info("Communication ended")
 
-    # * Background checks
-    def background_updates(self):
-        if self.robot.connected:
-            self.coretick_indicator_led.set_color("#ffffff")
+    # * Robot state
+    def update_states(self, topics: list[str], value: str):
+        # Robot will always be connected if this is called
+        # if self.robot.connected:
+        #     self.coretick_indicator_led.set_color("#ffffff")
             # if self.state.tick_speed:
             #     if time.time() - self.state.last_core_tick > self.state.tick_speed:
             #         self.coretick_indicator_led.set_color("#f44336")
@@ -1026,6 +941,7 @@ class MainWindow(QMainWindow):
         if self.state.waiting_for_handshake and self.robot.connected:
             self.state.waiting_for_handshake = False
             self.state_label.setText("Connected")
+            self.connect_indicator_led.set_color("#4caf50")
 
         if not self.robot.get_state().connected:
             return
@@ -1034,6 +950,10 @@ class MainWindow(QMainWindow):
             self.state_label.setText("Robot Enabled")
         else:
             self.state_label.setText("Robot Disabled")
+
+    def battery_update(self):
+        for index, graph in enumerate(self.battery_graphs):
+            graph.add(self.robot.get_state().battery.voltages[index])
 
     def controller_checker(self):
         if len(self.controller_manager.get_controller_ids()) > 0:
@@ -1186,6 +1106,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)
+        self.robot.callback = None # prevent attempting to update deleted Qt widgets
+        self.battery_timer.stop()
 
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.wait()

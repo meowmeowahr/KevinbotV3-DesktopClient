@@ -859,7 +859,7 @@ class MainWindow(QMainWindow):
             def apply_scaled_deadband(val, invert: bool = True):
                 if constants.CONTROLLER_DEADBAND > abs(val):
                     return 0
-                val =  (val * ((1 - constants.CONTROLLER_DEADBAND) if val > 0 else (1 + constants.CONTROLLER_DEADBAND))) + (-constants.CONTROLLER_DEADBAND if val > 0 else constants.CONTROLLER_DEADBAND)
+                val =  (val * ((1 + constants.CONTROLLER_DEADBAND) if val > 0 else (1 + constants.CONTROLLER_DEADBAND))) + (-constants.CONTROLLER_DEADBAND if val > 0 else constants.CONTROLLER_DEADBAND)
                 return -val if invert else val
                 
             left_power = max(-1, min(1, apply_scaled_deadband(controller.lefty)))

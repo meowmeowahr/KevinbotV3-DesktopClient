@@ -19,7 +19,8 @@ Drive and operate Kevinbot using a regular PC, gaming controllers, and a USB-con
 * Modern PySide6 GUI with dark theme
 * pyglet backend for controllers
 * Support Escaped/Unescaped XBee API modes
-* Support all XBee-supported baud rates and flow control
+* Connect to KevinbotLib Server using MQTT over WiFi or Ethernet
+* Uses KevinbotLib for robot control
 * Unit and coverage testing
 * Cross-platform compatibility (Mac support hasn't been tested)
 * GNU GPLv3 license
@@ -34,4 +35,4 @@ https://bugreports.qt.io/browse/PYSIDE-2888
 <br>
 https://github.com/spyder-ide/qtpy/issues/494
 
-### A: Update your PySide6 version to 6.8.0.1
+### A: Update your PySide6 version to 6.8.0.1 or newer

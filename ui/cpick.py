@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSlider
 from PySide6.QtGui import QPainter, QBrush, QColor, QLinearGradient
 
+
 class GradientSlider(QSlider):
     def __init__(self, orientation=Qt.Orientation.Vertical, parent=None):
         super().__init__(orientation, parent)
@@ -10,7 +11,7 @@ class GradientSlider(QSlider):
         self.setValue(300)  # Example starting position for the handle
         self.setTickPosition(QSlider.TickPosition.NoTicks)
         self.setOrientation(orientation)
-        
+
         # Extend the handle to go outside the gradient area
         self.setStyleSheet("""
             QSlider::groove:horizontal {
@@ -50,7 +51,7 @@ class GradientSlider(QSlider):
             }
                           
         """)
-    
+
     def paintEvent(self, ev):
         painter = QPainter(self)
         rect = self.rect()

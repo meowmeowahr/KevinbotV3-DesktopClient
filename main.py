@@ -27,7 +27,7 @@ from PySide6.QtCore import (
     QRunnable,
     QObject,
     Slot,
-    QThreadPool
+    QThreadPool,
 )
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import (
@@ -91,6 +91,7 @@ class AppState(Enum):
     ESTOPPED = 5
     DISCONNECTING = 6
 
+
 @dataclass
 class StateManager:
     app_state: AppState = AppState.NO_COMMUNICATIONS
@@ -112,8 +113,16 @@ class WorkerSignals(QObject):
     robot_connected = Signal()
     robot_disconnected = Signal()
 
+
 class ConnectionWorker(QRunnable):
-    def __init__(self, robot: kevinbotlib.MqttKevinbot, settings, state, state_label, serial_connect_button):
+    def __init__(
+        self,
+        robot: kevinbotlib.MqttKevinbot,
+        settings,
+        state,
+        state_label,
+        serial_connect_button,
+    ):
         super().__init__()
         self.robot = robot
         self.settings = settings
@@ -134,7 +143,7 @@ class ConnectionWorker(QRunnable):
             self.robot.connect(
                 "kevinbot",
                 self.settings.value("comm/mqtt_host", "http://10.0.0.1/"),
-                self.settings.value("comm/mqtt_port", 1883)
+                self.settings.value("comm/mqtt_port", 1883),
             )
             self.signals.connection_status.emit("Awaiting Handshake")
             self.signals.robot_connected.emit()
@@ -149,7 +158,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"Kevinbot Desktop Client {__version__}")
         self.setWindowIcon(QIcon("assets/icons/icon.svg"))
-        self.setDockOptions(QMainWindow.DockOption.AnimatedDocks) # No tabs in docks
+        self.setDockOptions(QMainWindow.DockOption.AnimatedDocks)  # No tabs in docks
 
         self.dc_log_queue = dc_log_queue
         self.log_converter = ansi2html.Ansi2HTMLConverter()
@@ -173,8 +182,12 @@ class MainWindow(QMainWindow):
         self.state.id = shortuuid.uuid()
         logger.info(f"Desktop Client ID is {self.state.id}")
 
-        self.state.camera_address = self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str)  # type: ignore
-        self.state.mqtt_host = self.settings.value("comm/mqtt_host", "http://10.0.0.1/", type=str)  # type: ignore
+        self.state.camera_address = self.settings.value(
+            "comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str
+        )  # type: ignore
+        self.state.mqtt_host = self.settings.value(
+            "comm/mqtt_host", "http://10.0.0.1/", type=str
+        )  # type: ignore
         logger.info(f"Robot FPV MJPEG Host: {self.state.camera_address}")
 
         # Theme
@@ -195,7 +208,6 @@ class MainWindow(QMainWindow):
                 additional_qss="#warning_bar_text{color: #050505;}",
                 custom_colors=constants.CUSTOM_COLORS_DARK,
             )
-
 
         # Communications
         self.robot = kevinbotlib.MqttKevinbot()
@@ -310,7 +322,10 @@ class MainWindow(QMainWindow):
 
         # * State Bar
         self.state_dock = QDockWidget("State")
-        self.state_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable)
+        self.state_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+        )
         self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.state_dock)
 
         self.state_widget = QWidget()
@@ -350,7 +365,11 @@ class MainWindow(QMainWindow):
         self.state_bar.addStretch()
 
         self.battery_dock = QDockWidget("Batteries")
-        self.battery_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.battery_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable
+        )
         self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.battery_dock)
 
         self.battery_widget = QWidget()
@@ -383,9 +402,13 @@ class MainWindow(QMainWindow):
             self.battery_layout.addLayout(layout)
 
         self.state_bar.addStretch()
-        
+
         self.indicators_dock = QDockWidget("Indicators")
-        self.indicators_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.indicators_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable
+        )
         self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.indicators_dock)
 
         self.indicators_widget = QWidget()
@@ -531,7 +554,7 @@ class MainWindow(QMainWindow):
         system_layout.addWidget(system_warning)
 
         xcb_check = QCheckBox("Force XCB Platform on Linux")
-        xcb_check.setChecked(self.settings.value("platform/force_xcb", type=bool)) # type: ignore
+        xcb_check.setChecked(self.settings.value("platform/force_xcb", type=bool))  # type: ignore
         xcb_check.clicked.connect(lambda: self.set_xcb(xcb_check.isChecked()))
         system_layout.addWidget(xcb_check)
 
@@ -570,17 +593,25 @@ class MainWindow(QMainWindow):
         comm_layout.addWidget(cam_addr_details)
 
         camera_input = QLineEdit()
-        camera_input.setText(self.settings.value("comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str))  # type: ignore
+        camera_input.setText(
+            self.settings.value(
+                "comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str
+            )
+        )  # type: ignore
         camera_input.textChanged.connect(
             lambda: self.set_camera_address(camera_input.text())
         )
         comm_layout.addWidget(camera_input)
 
-        mqtt_host_defails = QLabel("IP Address (preferred) or host of KevinbotLib MQTT Interface")
+        mqtt_host_defails = QLabel(
+            "IP Address (preferred) or host of KevinbotLib MQTT Interface"
+        )
         comm_layout.addWidget(mqtt_host_defails)
 
         mqtt_host_input = QLineEdit()
-        mqtt_host_input.setText(self.settings.value("comm/mqtt_host", "http://10.0.0.1/", type=str))  # type: ignore
+        mqtt_host_input.setText(
+            self.settings.value("comm/mqtt_host", "http://10.0.0.1/", type=str)
+        )  # type: ignore
         mqtt_host_input.textChanged.connect(
             lambda: self.set_mqtt_host(mqtt_host_input.text())
         )
@@ -624,11 +655,19 @@ class MainWindow(QMainWindow):
         log_level.setMaximum(6)
         log_level.setTickPosition(QSlider.TickPosition.TicksBelow)
         log_level.setTickInterval(1)
-        log_level.setValue(list(log_level_map.keys())[list(log_level_map.values()).index(settings.value("logging/level", 20, type=int))])  # type: ignore
+        log_level.setValue(
+            list(log_level_map.keys())[
+                list(log_level_map.values()).index(
+                    settings.value("logging/level", 20, type=int)
+                )
+            ]
+        )  # type: ignore
         log_level.valueChanged.connect(lambda: set_log_level(log_level.value()))
         logging_layout.addWidget(log_level)
 
-        log_level_name = QLabel(log_level_names[settings.value("logging/level", 20, type=int)])  # type: ignore
+        log_level_name = QLabel(
+            log_level_names[settings.value("logging/level", 20, type=int)]
+        )  # type: ignore
         log_level_name.setFont(QFont(self.fontInfo().family(), 22))
         logging_layout.addWidget(log_level_name)
 
@@ -802,7 +841,6 @@ class MainWindow(QMainWindow):
             ("Roboto Font", "assets/fonts/Roboto/LICENSE.txt"),
             ("JetBrains Mono Font", "assets/fonts/JetBrains_Mono/OFL.txt"),
         ]:
-
             license_viewer = QTextEdit()
             license_viewer.setReadOnly(True)
             try:
@@ -811,11 +849,15 @@ class MainWindow(QMainWindow):
             except FileNotFoundError:
                 buffer = QBuffer()
                 buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-                qta.icon("mdi6.alert", color="#f44336").pixmap(QSize(64, 64)).save(buffer, "PNG")
+                qta.icon("mdi6.alert", color="#f44336").pixmap(QSize(64, 64)).save(
+                    buffer, "PNG"
+                )
                 encoded = buffer.data().toBase64().toStdString()
-                license_viewer.setText(f"<img src=\"data:image/png;base64, {encoded}\" alt=\"Red dot\"/><br>"
-                                       f"License file '{license[1]}' not found.<br>There was an error locating the license file. "
-                                       "A copy of it should be included in the source and binary distributions.")
+                license_viewer.setText(
+                    f'<img src="data:image/png;base64, {encoded}" alt="Red dot"/><br>'
+                    f"License file '{license[1]}' not found.<br>There was an error locating the license file. "
+                    "A copy of it should be included in the source and binary distributions."
+                )
             licenses_tabs.addTab(license_viewer, license[0])
 
         tabs.addTab(licenses_tabs, "License", qta.icon("mdi6.gavel"))
@@ -837,7 +879,7 @@ class MainWindow(QMainWindow):
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
             return
-        
+
         self.robot.e_stop()
         self.state.app_state = AppState.ESTOPPED
         self.state_label.setText("Emergency Stopped")
@@ -848,7 +890,12 @@ class MainWindow(QMainWindow):
         Args:
             enable (bool): Enable or disable
         """
-        if self.state.app_state in [AppState.ESTOPPED, AppState.NO_COMMUNICATIONS, AppState.WAITING_FOR_HANDSHAKE, AppState.CONNECTING]:
+        if self.state.app_state in [
+            AppState.ESTOPPED,
+            AppState.NO_COMMUNICATIONS,
+            AppState.WAITING_FOR_HANDSHAKE,
+            AppState.CONNECTING,
+        ]:
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
             return
@@ -901,19 +948,38 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drivecmd(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if self.state.app_state in [AppState.ESTOPPED, AppState.NO_COMMUNICATIONS, AppState.WAITING_FOR_HANDSHAKE, AppState.CONNECTING]:
+        if self.state.app_state in [
+            AppState.ESTOPPED,
+            AppState.NO_COMMUNICATIONS,
+            AppState.WAITING_FOR_HANDSHAKE,
+            AppState.CONNECTING,
+        ]:
             return
-            
+
         if controller == self.controller_manager.get_controllers()[0]:
+
             def apply_scaled_deadband(val, invert: bool = True):
                 if constants.CONTROLLER_DEADBAND > abs(val):
                     return 0
-                val =  (val * ((1 + constants.CONTROLLER_DEADBAND) if val > 0 else (1 + constants.CONTROLLER_DEADBAND))) + (-constants.CONTROLLER_DEADBAND if val > 0 else constants.CONTROLLER_DEADBAND)
+                val = (
+                    val
+                    * (
+                        (1 + constants.CONTROLLER_DEADBAND)
+                        if val > 0
+                        else (1 + constants.CONTROLLER_DEADBAND)
+                    )
+                ) + (
+                    -constants.CONTROLLER_DEADBAND
+                    if val > 0
+                    else constants.CONTROLLER_DEADBAND
+                )
                 return -val if invert else val
-                
+
             left_power = max(-1, min(1, apply_scaled_deadband(controller.lefty)))
             right_power = max(-1, min(1, apply_scaled_deadband(controller.righty)))
-            if round(left_power, 2) == round(self.state.left_power, 2) and round(right_power, 2) == round(self.state.right_power, 2):
+            if round(left_power, 2) == round(self.state.left_power, 2) and round(
+                right_power, 2
+            ) == round(self.state.right_power, 2):
                 return
             self.state.left_power = left_power
             self.state.right_power = right_power
@@ -921,12 +987,11 @@ class MainWindow(QMainWindow):
             self.drive.drive_at_power(self.state.left_power, self.state.right_power)
 
     def toggle_connection(self):
-
         if self.state.app_state == AppState.ESTOPPED:
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
             return
-        self.connect_button.setEnabled(False) # prevent spamming
+        self.connect_button.setEnabled(False)  # prevent spamming
 
         if self.state.app_state == AppState.NO_COMMUNICATIONS:
             self.state.app_state = AppState.CONNECTING
@@ -935,7 +1000,9 @@ class MainWindow(QMainWindow):
             self.state.app_state = AppState.DISCONNECTING
 
         # Create a worker instance
-        worker = ConnectionWorker(self.robot, self.settings, self.state, self.state_label, self.connect_button)
+        worker = ConnectionWorker(
+            self.robot, self.settings, self.state, self.state_label, self.connect_button
+        )
         worker.signals.connection_status.connect(self.state_label.setText)
         worker.signals.robot_connected.connect(self.on_connect)
         worker.signals.robot_disconnected.connect(self.on_disconnect)
@@ -953,7 +1020,6 @@ class MainWindow(QMainWindow):
         for label in self.battery_volt_labels:
             label.setText("Unknown")
 
-
     def on_connect(self):
         self.robot.callback = self.update_states
         self.state.app_state = AppState.CONNECTED
@@ -965,15 +1031,14 @@ class MainWindow(QMainWindow):
     def update_states(self, topics: list[str], value: str):
         if not self.state.app_state == AppState.CONNECTED:
             return
-        
+
         if self.robot.get_state().enabled:
             self.state_label.setText("Robot Enabled")
         else:
             self.state_label.setText("Robot Disabled")
 
     def battery_update(self):
-        """Update battery states
-        """
+        """Update battery states"""
         if self.robot.connected:
             for index, graph in enumerate(self.battery_graphs):
                 graph.add(self.robot.get_state().battery.voltages[index])
@@ -1112,7 +1177,9 @@ class MainWindow(QMainWindow):
                 (True, False, False, False): Cardinal.WEST,
                 (False, True, False, False): Cardinal.EAST,
             }
-            cardinal = direction_map.get((dpleft, dpright, dpup, dpdown), Cardinal.CENTER)
+            cardinal = direction_map.get(
+                (dpleft, dpright, dpup, dpdown), Cardinal.CENTER
+            )
 
             self.pov_visual.plot(cardinal)
 
@@ -1133,21 +1200,20 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)
-        self.robot.callback = None # prevent attempting to update deleted Qt widgets
+        self.robot.callback = None  # prevent attempting to update deleted Qt widgets
         self.battery_timer.stop()
 
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.wait()
 
         self.robot.disconnect()
-        
+
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())
         if not self.isMaximized():
             self.settings.setValue("window/width", self.geometry().width())
             self.settings.setValue("window/height", self.geometry().height())
         event.accept()
-
 
 
 def parse(app):
@@ -1175,8 +1241,14 @@ def main(app: QApplication | None = None):
 
     settings = QSettings("meowmeowahr", "KevinbotDesktopClient")
     logger.remove()
-    logger.add(sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int))  # type: ignore
-    logger.add(dc_log_queue.put, colorize=True, level=settings.value("logging/level", 20, type=int))  # type: ignore
+    logger.add(
+        sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int)
+    )  # type: ignore
+    logger.add(
+        dc_log_queue.put,
+        colorize=True,
+        level=settings.value("logging/level", 20, type=int),
+    )  # type: ignore
 
     if not app:
         if platform.system() == "Linux":

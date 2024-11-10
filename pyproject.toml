@@ -59,6 +59,13 @@ extra-dependencies = [
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/kevinbot_desktopclient tests}"
 
+[tool.hatch.envs.hatch-test]
+dependencies = [
+  "coverage-enable-subprocess==1.0",
+  "coverage[toml]~=7.4",
+  "pytest~=8.1",
+  "pytest-qt"
+]
 
 [tool.coverage.run]
 source_pkgs = ["kevinbot_desktopclient", "tests"]

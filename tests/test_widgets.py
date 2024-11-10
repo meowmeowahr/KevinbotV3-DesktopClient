@@ -5,7 +5,7 @@ Unit tests for widgets
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import QWidget
-from ui.widgets import (
+from kevinbot_desktopclient.ui.widgets import (
     AuthorWidget,
     ColorBlock,
     CustomTabWidget,

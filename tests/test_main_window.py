@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 
 def test_main_window(qtbot):
-    import main
+    import kevinbot_desktopclient.main as main
 
     app = QApplication.instance()
     if app:

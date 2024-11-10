@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ui.delegates import NoFocusDelegate
+from kevinbot_desktopclient.ui.delegates import NoFocusDelegate
 
 from .uuid_manager import UuidManager
 

@@ -2,7 +2,7 @@
 Unit tests for uuid_manager
 """
 
-from components.uuid_manager import UuidManager
+from kevinbot_desktopclient.components.uuid_manager import UuidManager
 
 
 def test_uuid_manager():

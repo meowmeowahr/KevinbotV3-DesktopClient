@@ -3,7 +3,7 @@ Unit tests for plotting widgets
 """
 
 
-from ui.plots import BatteryGraph
+from kevinbot_desktopclient.ui.plots import BatteryGraph
 
 
 def test_battery_graph(qtbot):

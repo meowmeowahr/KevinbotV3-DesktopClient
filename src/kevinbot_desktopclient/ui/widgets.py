@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ui.util import initials as str2initials
-from ui.util import rgb_to_hex as _rgb2hex
+from kevinbot_desktopclient.ui.util import initials as str2initials
+from kevinbot_desktopclient.ui.util import rgb_to_hex as _rgb2hex
 
 
 class Severity(Enum):

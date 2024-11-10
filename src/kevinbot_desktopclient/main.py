@@ -9,23 +9,23 @@ from dataclasses import dataclass
 from enum import Enum
 
 import ansi2html
-import constants
+import kevinbot_desktopclient.constants as constants
 import kevinbotlib
 import kevinbotlib.exceptions
 import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import shortuuid
-from components import (
+from kevinbot_desktopclient.components import (
     ControllerManagerWidget,
     PingWorker,
     begin_controller_backend,
     controllers,
 )
-from components.dataplot import LivePlot
-from components.ping import PingWidget
+from kevinbot_desktopclient.components.dataplot import LivePlot
+from kevinbot_desktopclient.components.ping import PingWidget
 from Custom_Widgets.QCustomModals import QCustomModals
-from enums import Cardinal
+from kevinbot_desktopclient.enums import Cardinal
 from loguru import logger
 from PySide6.QtCore import (
     QBuffer,
@@ -69,10 +69,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ui.mjpeg import MJPEGViewer
-from ui.plots import BatteryGraph, PovVisual, StickVisual
-from ui.util import add_tabs
-from ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, WarningBar
+from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
+from kevinbot_desktopclient.ui.plots import BatteryGraph, PovVisual, StickVisual
+from kevinbot_desktopclient.ui.util import add_tabs
+from kevinbot_desktopclient.ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, WarningBar
 
 __version__ = "0.0.0"
 __authors__ = [

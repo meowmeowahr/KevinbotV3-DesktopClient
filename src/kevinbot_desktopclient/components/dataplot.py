@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ui.widgets import ColorBlock
+from kevinbot_desktopclient.ui.widgets import ColorBlock
 
 
 def color_string_to_hex(color_str):

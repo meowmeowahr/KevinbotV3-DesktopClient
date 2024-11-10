@@ -1,3 +1,4 @@
+from enum import Enum
 import queue
 import sys
 import os
@@ -23,6 +24,10 @@ from PySide6.QtCore import (
     QCommandLineParser,
     QBuffer,
     QIODevice,
+    QRunnable,
+    QObject,
+    Slot,
+    QThreadPool
 )
 from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import (
@@ -78,11 +83,17 @@ __authors__ = [
 ]
 
 
+class AppState(Enum):
+    NO_COMMUNICATIONS = 1
+    CONNECTING = 2
+    WAITING_FOR_HANDSHAKE = 3
+    CONNECTED = 4
+    ESTOPPED = 5
+    DISCONNECTING = 6
+
 @dataclass
 class StateManager:
-    connected: bool = False
-    waiting_for_handshake: bool = False
-    estop: bool = False
+    app_state: AppState = AppState.NO_COMMUNICATIONS
     enabled: bool = False
     id: str = ""
     tick_speed: float | None = None
@@ -93,6 +104,37 @@ class StateManager:
     last_core_tick: float = time.time()
     left_power: float = 0.0
     right_power: float = 0.0
+
+
+class WorkerSignals(QObject):
+    # Define custom signals to emit status
+    connection_status = Signal(str)
+    robot_connected = Signal()
+    disconnect_requested = Signal()
+
+class ConnectionWorker(QRunnable):
+    def __init__(self, robot: kevinbotlib.MqttKevinbot, settings, state, state_label, serial_connect_button):
+        super().__init__()
+        self.robot = robot
+        self.settings = settings
+        self.state = state
+        self.state_label = state_label
+        self.serial_connect_button = serial_connect_button
+        self.signals = WorkerSignals()
+
+    @Slot()
+    def run(self):
+        # This code will now run in a separate thread
+        if self.robot.connected:
+            self.signals.disconnect_requested.emit()
+        else:
+            self.robot.connect(
+                "kevinbot",
+                self.settings.value("comm/mqtt_host", "http://10.0.0.1/"),
+                self.settings.value("comm/mqtt_port", 1883)
+            )
+            self.signals.connection_status.emit("Awaiting Handshake")
+            self.signals.robot_connected.emit()
 
 
 class MainWindow(QMainWindow):
@@ -169,6 +211,9 @@ class MainWindow(QMainWindow):
         self.battery_timer.setInterval(750)
         self.battery_timer.timeout.connect(self.battery_update)
         self.battery_timer.start()
+
+        # Thread pool
+        self.thread_pool = QThreadPool()
 
         # Widget/Root Layout
         self.root_widget = QWidget()
@@ -380,6 +425,11 @@ class MainWindow(QMainWindow):
         self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.state_layout.addWidget(self.state_label)
 
+        self.connect_button = QPushButton("Connect")
+        self.connect_button.setIcon(qta.icon("mdi6.wifi"))
+        self.connect_button.clicked.connect(self.toggle_connection)
+        self.state_layout.addWidget(self.connect_button)
+
         self.state_label_timer = QTimer()
         self.state_label_timer.timeout.connect(self.pulse_state_label)
         self.state_label_timer_runs = 0
@@ -394,7 +444,6 @@ class MainWindow(QMainWindow):
         self.debug.setLayout(self.debug_layout(self.settings))
         (
             self.comm_layout,
-            self.serial_connect_button,
             self.stick_visual_left,
             self.stick_visual_right,
             self.pov_visual,
@@ -635,12 +684,9 @@ class MainWindow(QMainWindow):
     def connection_layout(self, settings: QSettings):
         layout = QHBoxLayout()
 
-        splitter = QSplitter()
-        layout.addWidget(splitter)
-
         # Controller
         controller_widget = QWidget()
-        splitter.addWidget(controller_widget)
+        layout.addWidget(controller_widget)
 
         controller_layout = QHBoxLayout()
         controller_widget.setLayout(controller_layout)
@@ -675,26 +721,8 @@ class MainWindow(QMainWindow):
         pov_visual.plot(Cardinal.CENTER)
         controller_right_layout.addWidget(pov_visual)
 
-        # Comm
-        comm_widget = QWidget()
-        splitter.addWidget(comm_widget)
-
-        comm_layout = QVBoxLayout()
-        comm_widget.setLayout(comm_layout)
-
-        # Port, baud rate, flow control, escaped config grid layout
-        comm_options_layout = QGridLayout()
-        comm_options_layout.setColumnStretch(1, 1)
-        comm_layout.addLayout(comm_options_layout)
-
-        connect_button = QPushButton("Connect")
-        connect_button.setIcon(qta.icon("mdi6.wifi"))
-        connect_button.clicked.connect(self.open_connection)
-        comm_options_layout.addWidget(connect_button, 4, 1)
-
         return (
             layout,
-            connect_button,
             left_stick_visual,
             right_stick_visual,
             pov_visual,
@@ -801,9 +829,22 @@ class MainWindow(QMainWindow):
 
     # State
     def request_estop(self):
+        if self.state.app_state == AppState.ESTOPPED:
+            if not self.state_label_timer.isActive():
+                self.state_label_timer.start(100)
+            return
+        
         self.robot.e_stop()
+        self.robot.callback = None
+        self.state.app_state = AppState.ESTOPPED
+        self.state_label.setText("Emergency Stopped")
 
     def request_enable(self, enable: bool):
+        if self.state.app_state == AppState.ESTOPPED:
+            if not self.state_label_timer.isActive():
+                self.state_label_timer.start(100)
+            return
+
         if enable:
             self.robot.request_enable()
         else:
@@ -852,7 +893,7 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drivecmd(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if (not self.robot.get_state().connected) or self.state.waiting_for_handshake:
+        if (not self.robot.get_state().connected) or self.state.app_state == AppState.WAITING_FOR_HANDSHAKE:
             return
             
         if controller == self.controller_manager.get_controllers()[0]:
@@ -871,30 +912,44 @@ class MainWindow(QMainWindow):
 
             self.drive.drive_at_power(self.state.left_power, self.state.right_power)
 
-    def open_connection(self):
-        if self.robot.connected:
-            self.end_communication()
+    def toggle_connection(self):
+        if self.state.app_state == AppState.ESTOPPED:
+            if not self.state_label_timer.isActive():
+                self.state_label_timer.start(100)
             return
+
+        if self.state.app_state != AppState.CONNECTED:
+            self.state.app_state = AppState.CONNECTING
+            self.state_label.setText("Connecting")
         else:
-            self.robot.connect("kevinbot", self.settings.value("comm/mqtt_host", "http://10.0.0.1/"), self.settings.value("comm/mqtt_port", 1883)) # type: ignore
-            self.robot.callback = self.update_states
+            self.state.app_state = AppState.DISCONNECTING
+            self.state_label.setText("Disconnecting")
 
-        self.state.waiting_for_handshake = True
-        self.state_label.setText("Awaiting Handshake")
+        # Create a worker instance
+        worker = ConnectionWorker(self.robot, self.settings, self.state, self.state_label, self.connect_button)
+        worker.signals.connection_status.connect(self.state_label.setText)
+        worker.signals.robot_connected.connect(self.robot_connected_event)
+        worker.signals.disconnect_requested.connect(self.end_communication)
 
-        self.serial_connect_button.setText("Disconnect")
+        # Run the worker using the thread pool
+        self.thread_pool.start(worker)
+
+    def robot_connected_event(self):
+        self.robot.callback = self.update_states
+        self.connect_button.setText("Disconnect")
 
     def end_communication(self):
-        logger.info("Communication ended")
+        logger.info("Communication ending")
 
         # avoid potential issues
         self.robot.callback = None
 
         self.state_label.setText("No Communications")
         self.connect_indicator_led.set_color("#f44336")
-        self.serial_connect_button.setText("Connect")
+        self.connect_button.setText("Connect")
         if self.robot.connected:
             self.robot.disconnect()
+        self.connect_button.setText("Connect")
 
     # * Robot state
     def update_states(self, topics: list[str], value: str):
@@ -914,8 +969,8 @@ class MainWindow(QMainWindow):
             # else:
             #     logger.warning("No tick speed set, skipping tick check")
 
-        if self.state.waiting_for_handshake and self.robot.connected:
-            self.state.waiting_for_handshake = False
+        if self.state.app_state == AppState.WAITING_FOR_HANDSHAKE and self.robot.connected:
+            self.state.app_state = AppState.CONNECTED
             self.state_label.setText("Connected")
             self.connect_indicator_led.set_color("#4caf50")
 

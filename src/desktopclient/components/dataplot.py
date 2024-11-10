@@ -62,6 +62,7 @@ class DataSourceCheckBox(QFrame):
 
         self.color = ColorBlock()
         self.color.setMinimumSize(QSize(10, 10))
+        self.color.setMaximumWidth(10)
         self.color.set_color(color_string_to_hex(color))
         layout.addWidget(self.color)
 

@@ -1321,6 +1321,7 @@ def main(app: QApplication | None = None):
 
     parse(app)
 
+    logger.info(f"Using KevinbotLib {kevinbotlib.version}")
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
     logger.info(f"Using Python: {platform.python_version()}")

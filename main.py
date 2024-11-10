@@ -110,7 +110,7 @@ class WorkerSignals(QObject):
     # Define custom signals to emit status
     connection_status = Signal(str)
     robot_connected = Signal()
-    disconnect_requested = Signal()
+    robot_disconnected = Signal()
 
 class ConnectionWorker(QRunnable):
     def __init__(self, robot: kevinbotlib.MqttKevinbot, settings, state, state_label, serial_connect_button):
@@ -126,7 +126,10 @@ class ConnectionWorker(QRunnable):
     def run(self):
         # This code will now run in a separate thread
         if self.robot.connected:
-            self.signals.disconnect_requested.emit()
+            logger.info("Communication ending")
+            self.robot.callback = None
+            self.robot.disconnect()
+            self.signals.robot_disconnected.emit()
         else:
             self.robot.connect(
                 "kevinbot",
@@ -828,20 +831,24 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    # State
+    # Enable / E-Stop
     def request_estop(self):
-        if self.state.app_state == AppState.ESTOPPED:
+        if self.state.app_state in [AppState.ESTOPPED, AppState.NO_COMMUNICATIONS]:
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
             return
         
         self.robot.e_stop()
-        self.robot.callback = None
         self.state.app_state = AppState.ESTOPPED
         self.state_label.setText("Emergency Stopped")
 
     def request_enable(self, enable: bool):
-        if self.state.app_state == AppState.ESTOPPED:
+        """Attempt to enable or disable the robot.
+
+        Args:
+            enable (bool): Enable or disable
+        """
+        if self.state.app_state in [AppState.ESTOPPED, AppState.NO_COMMUNICATIONS, AppState.WAITING_FOR_HANDSHAKE, AppState.CONNECTING]:
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
             return
@@ -894,7 +901,7 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drivecmd(self, controller: pyglet.input.Controller, xvalue, yvalue):
-        if (not self.robot.get_state().connected) or self.state.app_state == AppState.WAITING_FOR_HANDSHAKE:
+        if self.state.app_state in [AppState.ESTOPPED, AppState.NO_COMMUNICATIONS, AppState.WAITING_FOR_HANDSHAKE, AppState.CONNECTING]:
             return
             
         if controller == self.controller_manager.get_controllers()[0]:
@@ -914,68 +921,49 @@ class MainWindow(QMainWindow):
             self.drive.drive_at_power(self.state.left_power, self.state.right_power)
 
     def toggle_connection(self):
+
         if self.state.app_state == AppState.ESTOPPED:
             if not self.state_label_timer.isActive():
                 self.state_label_timer.start(100)
             return
+        self.connect_button.setEnabled(False) # prevent spamming
 
-        if self.state.app_state != AppState.CONNECTED:
+        if self.state.app_state == AppState.NO_COMMUNICATIONS:
             self.state.app_state = AppState.CONNECTING
             self.state_label.setText("Connecting")
         else:
             self.state.app_state = AppState.DISCONNECTING
-            self.state_label.setText("Disconnecting")
 
         # Create a worker instance
         worker = ConnectionWorker(self.robot, self.settings, self.state, self.state_label, self.connect_button)
         worker.signals.connection_status.connect(self.state_label.setText)
-        worker.signals.robot_connected.connect(self.robot_connected_event)
-        worker.signals.disconnect_requested.connect(self.end_communication)
+        worker.signals.robot_connected.connect(self.on_connect)
+        worker.signals.robot_disconnected.connect(self.on_disconnect)
 
         # Run the worker using the thread pool
         self.thread_pool.start(worker)
 
-    def robot_connected_event(self):
-        self.robot.callback = self.update_states
-        self.connect_button.setText("Disconnect")
-
-    def end_communication(self):
-        logger.info("Communication ending")
-
-        # avoid potential issues
-        self.robot.callback = None
-
+    def on_disconnect(self):
+        self.state.app_state = AppState.NO_COMMUNICATIONS
         self.state_label.setText("No Communications")
+        self.connect_button.setText("Connect")
         self.connect_indicator_led.set_color("#f44336")
-        self.connect_button.setText("Connect")
-        if self.robot.connected:
-            self.robot.disconnect()
-        self.connect_button.setText("Connect")
+        self.connect_button.setEnabled(True)
+
+        for label in self.battery_volt_labels:
+            label.setText("Unknown")
+
+
+    def on_connect(self):
+        self.robot.callback = self.update_states
+        self.state.app_state = AppState.CONNECTED
+        self.connect_indicator_led.set_color("#4caf50")
+        self.connect_button.setText("Disconnect")
+        self.connect_button.setEnabled(True)
 
     # * Robot state
     def update_states(self, topics: list[str], value: str):
-        # Robot will always be connected if this is called
-        # if self.robot.connected:
-        #     self.coretick_indicator_led.set_color("#ffffff")
-            # if self.state.tick_speed:
-            #     if time.time() - self.state.last_core_tick > self.state.tick_speed:
-            #         self.coretick_indicator_led.set_color("#f44336")
-            #     else:
-            #         self.coretick_indicator_led.set_color("#4caf50")
-
-            #     if time.time() - self.state.last_system_tick > self.state.tick_speed:
-            #         self.systick_indicator_led.set_color("#f44336")
-            #     else:
-            #         self.systick_indicator_led.set_color("#4caf50")
-            # else:
-            #     logger.warning("No tick speed set, skipping tick check")
-
-        if self.state.app_state == AppState.WAITING_FOR_HANDSHAKE and self.robot.connected:
-            self.state.app_state = AppState.CONNECTED
-            self.state_label.setText("Connected")
-            self.connect_indicator_led.set_color("#4caf50")
-
-        if not self.robot.get_state().connected:
+        if not self.state.app_state == AppState.CONNECTED:
             return
         
         if self.robot.get_state().enabled:
@@ -984,6 +972,8 @@ class MainWindow(QMainWindow):
             self.state_label.setText("Robot Disabled")
 
     def battery_update(self):
+        """Update battery states
+        """
         if self.robot.connected:
             for index, graph in enumerate(self.battery_graphs):
                 graph.add(self.robot.get_state().battery.voltages[index])
@@ -993,6 +983,8 @@ class MainWindow(QMainWindow):
     def controller_checker(self):
         if len(self.controller_manager.get_controller_ids()) > 0:
             self.controller_led.set_color("#4caf50")
+            if self.controller_manager.connected_list.count() == 0:
+                self.controller_manager.refresh_controllers()
         else:
             self.controller_led.set_color("#f44336")
 
@@ -1147,7 +1139,7 @@ class MainWindow(QMainWindow):
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.wait()
 
-        self.end_communication()
+        self.robot.disconnect()
         
         self.settings.setValue("window/x", self.geometry().x())
         self.settings.setValue("window/y", self.geometry().y())

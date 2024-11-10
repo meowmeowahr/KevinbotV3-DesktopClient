@@ -368,6 +368,7 @@ class MainWindow(QMainWindow):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             volt = QLabel("Unknown")
+            volt.setFont(QFont(self.font().family(), 15))
             volt.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.battery_volt_labels.append(volt)
 

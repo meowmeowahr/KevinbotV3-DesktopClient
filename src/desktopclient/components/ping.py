@@ -21,8 +21,20 @@ class PingWorker(QThread):
         if not self.running:
             return
         try:
-            response = icmplib.ping(self.target, interval=self.interval, count=self.count, timeout=self.timeout, privileged=False)
-        except (UnicodeError, icmplib.exceptions.ICMPSocketError, icmplib.exceptions.NameLookupError, icmplib.exceptions.SocketPermissionError, icmplib.exceptions.SocketAddressError) as e:
+            response = icmplib.ping(
+                self.target,
+                interval=self.interval,
+                count=self.count,
+                timeout=self.timeout,
+                privileged=False,
+            )
+        except (
+            UnicodeError,
+            icmplib.exceptions.ICMPSocketError,
+            icmplib.exceptions.NameLookupError,
+            icmplib.exceptions.SocketPermissionError,
+            icmplib.exceptions.SocketAddressError,
+        ) as e:
             self.on_error.emit(e)
             return
         result = response
@@ -32,6 +44,7 @@ class PingWorker(QThread):
     def stop(self):
         self.running = False
         self.wait()
+
 
 class PingWidget(QWidget):
     def __init__(self):
@@ -44,7 +57,7 @@ class PingWidget(QWidget):
         # Label for displaying connection status and values
         self.label = QLabel("Not Connected")
         self.root_layout.addWidget(self.label)
-        
+
         # Adjust initial style
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet("font-size: 14px;")
@@ -52,8 +65,10 @@ class PingWidget(QWidget):
     def set_values(self, values):
         # Calculate color for ping
         ping_color = self.get_color_based_on_value(values.avg_rtt, thresholds=(50, 150))
-        jitter_color = self.get_color_based_on_value(values.jitter, thresholds=(20, 100))
-        
+        jitter_color = self.get_color_based_on_value(
+            values.jitter, thresholds=(20, 100)
+        )
+
         # Set colored text for ping and jitter
         self.label.setText(
             f"Ping: <span style='color:{ping_color}'>{values.avg_rtt:.0f} ms</span>, "

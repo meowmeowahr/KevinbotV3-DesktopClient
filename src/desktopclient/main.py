@@ -1,4 +1,5 @@
 from enum import Enum
+import math
 import queue
 import sys
 import os
@@ -65,6 +66,7 @@ import shortuuid
 import kevinbotlib
 
 from components.ping import PingWidget
+from components.dataplot import LivePlot
 from enums import Cardinal
 from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
@@ -155,7 +157,11 @@ class ConnectionWorker(QRunnable):
                     self.settings.value("comm/host", "http://10.0.0.1/"),
                     self.settings.value("comm/mqtt_port", 1883),
                 )
-            except (UnicodeError, ConnectionRefusedError, kevinbotlib.exceptions.HandshakeTimeoutException) as e:
+            except (
+                UnicodeError,
+                ConnectionRefusedError,
+                kevinbotlib.exceptions.HandshakeTimeoutException,
+            ) as e:
                 logger.error(f"Failed to connect to MQTT broker: {repr(e)}")
                 self.signals.connection_error.emit(e, traceback.format_exc())
                 return
@@ -271,15 +277,15 @@ class MainWindow(QMainWindow):
         self.pov_update.connect(self.update_dpad_visuals)
 
         self.ping_worker = PingWorker(
-            self.settings.value("comm/host", "http://10.0.0.1/", type=str),   # type: ignore
-            self.settings.value("ping/burst_count", 3, type=int),   # type: ignore
-            self.settings.value("ping/burst_interval", 0.3, type=int),   # type: ignore
-            self.settings.value("ping/timeout", 1, type=int)  # type: ignore
+            self.settings.value("comm/host", "http://10.0.0.1/", type=str),  # type: ignore
+            self.settings.value("ping/burst_count", 3, type=int),  # type: ignore
+            self.settings.value("ping/burst_interval", 0.3, type=int),  # type: ignore
+            self.settings.value("ping/timeout", 1, type=int),  # type: ignore
         )
 
         self.ping_timer = QTimer()
         self.ping_timer.timeout.connect(self.ping_worker.start)
-        self.ping_timer.setInterval(self.settings.value("ping/interval", 4, type=int)) # type: ignore
+        self.ping_timer.setInterval(self.settings.value("ping/interval", 4, type=int))  # type: ignore
         self.ping_timer.start()
 
         # * Drive
@@ -438,6 +444,8 @@ class MainWindow(QMainWindow):
 
         self.state_bar.addStretch()
 
+        # * Indicators
+
         self.indicators_dock = QDockWidget("Indicators")
         self.indicators_dock.setFeatures(
             QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
@@ -479,6 +487,33 @@ class MainWindow(QMainWindow):
 
         self.controller_indicator_label = QLabel("Controller")
         self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
+
+        # * Plot
+        self.plot_dock = QDockWidget("Plot")
+        self.plot_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable
+        )
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
+
+        self.plot_widget = QWidget()
+        self.plot_dock.setWidget(self.plot_widget)
+
+        self.plot_layout = QVBoxLayout()
+        self.plot_widget.setLayout(self.plot_layout)
+
+        self.plot = LivePlot()
+        self.plot_layout.addWidget(self.plot)
+
+        # TODO: Add real data sources
+        self.plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
+        self.plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
+        self.plot.add_data_source("IMU/Gyro/Roll", lambda _: self.robot.get_state().imu.gyro[2], "b")
+
+        self.plot.add_data_source("IMU/Accel/Yaw", lambda _: self.robot.get_state().imu.accel[0], "m")
+        self.plot.add_data_source("IMU/Accel/Pitch", lambda _: self.robot.get_state().imu.accel[1], "c")
+        self.plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
 
         self.state_label = QLabel("No Communications")
         self.state_label.setFont(
@@ -1069,7 +1104,7 @@ class MainWindow(QMainWindow):
         self.connect_button.setEnabled(True)
         self.state.app_state = AppState.NO_COMMUNICATIONS
         self.state_label.setText("No Communications")
-        
+
         # error message
         msg = QErrorMessage(self)
         msg.setWindowTitle("Connection Error")
@@ -1321,6 +1356,7 @@ def main(app: QApplication | None = None):
 
     parse(app)
 
+    logger.info(f"Using KevinbotLib {kevinbotlib.version}")
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
     logger.info(f"Using Python: {platform.python_version()}")

@@ -507,7 +507,13 @@ class MainWindow(QMainWindow):
         self.plot_layout.addWidget(self.plot)
 
         # TODO: Add real data sources
-        self.plot.add_data_source("TEST/sin", math.sin)
+        self.plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
+        self.plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
+        self.plot.add_data_source("IMU/Gyro/Roll", lambda _: self.robot.get_state().imu.gyro[2], "b")
+
+        self.plot.add_data_source("IMU/Accel/Yaw", lambda _: self.robot.get_state().imu.accel[0], "m")
+        self.plot.add_data_source("IMU/Accel/Pitch", lambda _: self.robot.get_state().imu.accel[1], "c")
+        self.plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
 
         self.state_label = QLabel("No Communications")
         self.state_label.setFont(

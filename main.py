@@ -5,9 +5,11 @@ import os
 import platform
 import threading
 import time
+import traceback
 from typing import Tuple
 from dataclasses import dataclass
 
+import kevinbotlib.exceptions
 from loguru import logger
 
 import pyglet
@@ -52,6 +54,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QToolButton,
     QDockWidget,
+    QErrorMessage,
+    QStatusBar,
 )
 from Custom_Widgets.QCustomModals import QCustomModals
 
@@ -60,15 +64,19 @@ import shortuuid
 
 import kevinbotlib
 
-import xbee
-
+from components.ping import PingWidget
 from enums import Cardinal
 from ui.util import add_tabs
 from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
 from ui.plots import BatteryGraph, StickVisual, PovVisual
 from ui.mjpeg import MJPEGViewer
 
-from components import controllers, ControllerManagerWidget, begin_controller_backend
+from components import (
+    controllers,
+    ControllerManagerWidget,
+    begin_controller_backend,
+    PingWorker,
+)
 
 import constants
 
@@ -110,6 +118,7 @@ class StateManager:
 class WorkerSignals(QObject):
     # Define custom signals to emit status
     connection_status = Signal(str)
+    connection_error = Signal(Exception, traceback.FrameSummary)
     robot_connected = Signal()
     robot_disconnected = Signal()
 
@@ -140,11 +149,17 @@ class ConnectionWorker(QRunnable):
             self.robot.disconnect()
             self.signals.robot_disconnected.emit()
         else:
-            self.robot.connect(
-                "kevinbot",
-                self.settings.value("comm/mqtt_host", "http://10.0.0.1/"),
-                self.settings.value("comm/mqtt_port", 1883),
-            )
+            try:
+                self.robot.connect(
+                    "kevinbot",
+                    self.settings.value("comm/host", "http://10.0.0.1/"),
+                    self.settings.value("comm/mqtt_port", 1883),
+                )
+            except (UnicodeError, ConnectionRefusedError, kevinbotlib.exceptions.HandshakeTimeoutException) as e:
+                logger.error(f"Failed to connect to MQTT broker: {repr(e)}")
+                self.signals.connection_error.emit(e, traceback.format_exc())
+                return
+
             self.signals.connection_status.emit("Awaiting Handshake")
             self.signals.robot_connected.emit()
 
@@ -186,7 +201,7 @@ class MainWindow(QMainWindow):
             "comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str
         )  # type: ignore
         self.state.mqtt_host = self.settings.value(
-            "comm/mqtt_host", "http://10.0.0.1/", type=str
+            "comm/host", "http://10.0.0.1/", type=str
         )  # type: ignore
         logger.info(f"Robot FPV MJPEG Host: {self.state.camera_address}")
 
@@ -255,14 +270,26 @@ class MainWindow(QMainWindow):
         self.right_stick_update.connect(self.update_right_stick_visuals)
         self.pov_update.connect(self.update_dpad_visuals)
 
-        # Drive
+        self.ping_worker = PingWorker(
+            self.settings.value("comm/host", "http://10.0.0.1/", type=str),   # type: ignore
+            self.settings.value("ping/burst_count", 3, type=int),   # type: ignore
+            self.settings.value("ping/burst_interval", 0.3, type=int),   # type: ignore
+            self.settings.value("ping/timeout", 1, type=int)  # type: ignore
+        )
+
+        self.ping_timer = QTimer()
+        self.ping_timer.timeout.connect(self.ping_worker.start)
+        self.ping_timer.setInterval(self.settings.value("ping/interval", 4, type=int)) # type: ignore
+        self.ping_timer.start()
+
+        # * Drive
         self.state.left_power = 0
         self.state.right_power = 0
 
         self.left_stick_update.connect(self.drivecmd)
         self.right_stick_update.connect(self.drivecmd)
 
-        # Tabs
+        # * Tabs
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(36, 36))
         self.tabs.setTabPosition(QTabWidget.TabPosition.West)
@@ -298,6 +325,14 @@ class MainWindow(QMainWindow):
             self.settings_widget,
             self.about_widget,
         ) = add_tabs(self.tabs, tabs)
+
+        # * Status Bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+
+        self.ping_widget = PingWidget()
+        self.ping_worker.ping_completed.connect(self.ping_widget.set_values)
+        self.status_bar.addPermanentWidget(self.ping_widget)
 
         # * Main Tab
         self.main_layout = QVBoxLayout()
@@ -378,7 +413,7 @@ class MainWindow(QMainWindow):
         self.battery_layout = QHBoxLayout()
         self.battery_widget.setLayout(self.battery_layout)
 
-        # Battery
+        # * Battery
         self.battery_graphs: list[BatteryGraph] = []
         self.battery_volt_labels = []
         for i in range(2):
@@ -595,9 +630,11 @@ class MainWindow(QMainWindow):
         camera_input = QLineEdit()
         camera_input.setText(
             self.settings.value(
-                "comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str
+                "comm/camera_address",
+                "http://10.0.0.1:5000/video_feed",
+                type=str,  # type: ignore
             )
-        )  # type: ignore
+        )
         camera_input.textChanged.connect(
             lambda: self.set_camera_address(camera_input.text())
         )
@@ -610,8 +647,8 @@ class MainWindow(QMainWindow):
 
         mqtt_host_input = QLineEdit()
         mqtt_host_input.setText(
-            self.settings.value("comm/mqtt_host", "http://10.0.0.1/", type=str)
-        )  # type: ignore
+            self.settings.value("comm/host", "http://10.0.0.1/", type=str)  # type: ignore
+        )
         mqtt_host_input.textChanged.connect(
             lambda: self.set_mqtt_host(mqtt_host_input.text())
         )
@@ -658,16 +695,16 @@ class MainWindow(QMainWindow):
         log_level.setValue(
             list(log_level_map.keys())[
                 list(log_level_map.values()).index(
-                    settings.value("logging/level", 20, type=int)
+                    settings.value("logging/level", 20, type=int)  # type: ignore
                 )
             ]
-        )  # type: ignore
+        )
         log_level.valueChanged.connect(lambda: set_log_level(log_level.value()))
         logging_layout.addWidget(log_level)
 
         log_level_name = QLabel(
-            log_level_names[settings.value("logging/level", 20, type=int)]
-        )  # type: ignore
+            log_level_names[settings.value("logging/level", 20, type=int)]  # type: ignore
+        )
         log_level_name.setFont(QFont(self.fontInfo().family(), 22))
         logging_layout.addWidget(log_level_name)
 
@@ -1005,6 +1042,7 @@ class MainWindow(QMainWindow):
         )
         worker.signals.connection_status.connect(self.state_label.setText)
         worker.signals.robot_connected.connect(self.on_connect)
+        worker.signals.connection_error.connect(self.on_connect_error)
         worker.signals.robot_disconnected.connect(self.on_disconnect)
 
         # Run the worker using the thread pool
@@ -1026,6 +1064,16 @@ class MainWindow(QMainWindow):
         self.connect_indicator_led.set_color("#4caf50")
         self.connect_button.setText("Disconnect")
         self.connect_button.setEnabled(True)
+
+    def on_connect_error(self, exception: Exception, summary: traceback.FrameSummary):
+        self.connect_button.setEnabled(True)
+        self.state.app_state = AppState.NO_COMMUNICATIONS
+        self.state_label.setText("No Communications")
+        
+        # error message
+        msg = QErrorMessage(self)
+        msg.setWindowTitle("Connection Error")
+        msg.showMessage(f"{str(summary).replace('\n', '<br>')}")
 
     # * Robot state
     def update_states(self, topics: list[str], value: str):
@@ -1195,12 +1243,18 @@ class MainWindow(QMainWindow):
         self.fpv.mjpeg_thread.stream_url = host
 
     def set_mqtt_host(self, host: str):
-        self.settings.setValue("comm/mqtt_host", host)
+        self.settings.setValue("comm/host", host)
+        self.ping_worker.target = host
         self.state.mqtt_host = host
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)
         self.robot.callback = None  # prevent attempting to update deleted Qt widgets
+
+        self.ping_timer.stop()
+        self.ping_worker.stop()
+        self.ping_worker.wait()
+
         self.battery_timer.stop()
 
         self.fpv.mjpeg_thread.terminate()
@@ -1242,13 +1296,15 @@ def main(app: QApplication | None = None):
     settings = QSettings("meowmeowahr", "KevinbotDesktopClient")
     logger.remove()
     logger.add(
-        sys.stdout, colorize=True, level=settings.value("logging/level", 20, type=int)
-    )  # type: ignore
+        sys.stdout,
+        colorize=True,
+        level=settings.value("logging/level", 20, type=int),  # type: ignore
+    )
     logger.add(
         dc_log_queue.put,
         colorize=True,
-        level=settings.value("logging/level", 20, type=int),
-    )  # type: ignore
+        level=settings.value("logging/level", 20, type=int),  # type: ignore
+    )
 
     if not app:
         if platform.system() == "Linux":
@@ -1268,7 +1324,6 @@ def main(app: QApplication | None = None):
     logger.info(f"Using Qt: {qVersion()}")
     logger.info(f"Using pyglet: {controllers.pyglet.version}")
     logger.info(f"Using Python: {platform.python_version()}")
-    logger.info(f"Using xbee-python: {xbee.__version__}")
     logger.info(f"Kevinbot Desktop Client: {__version__}")
 
     threading.Thread(target=controller_backend, daemon=True).start()

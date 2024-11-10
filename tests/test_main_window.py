@@ -2,8 +2,9 @@
 Unit tests for main window
 """
 
-import pytest
 import queue
+
+import pytest
 from PySide6.QtWidgets import QApplication
 
 

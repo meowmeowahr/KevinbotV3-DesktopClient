@@ -4,8 +4,7 @@ Unit tests for UI utils
 
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QTabWidget
-
-from ui.util import add_tabs, rotate_icon, initials, rgb_to_hex, change_url_port
+from ui.util import add_tabs, change_url_port, initials, rgb_to_hex, rotate_icon
 
 
 def test_tab_generator(qtbot):

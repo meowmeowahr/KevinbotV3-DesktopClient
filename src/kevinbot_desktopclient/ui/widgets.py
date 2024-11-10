@@ -1,20 +1,19 @@
+import hashlib
 from enum import Enum
 from functools import partial
-import hashlib
 
-from PySide6.QtCore import Qt, QSize, Signal, QUrl
+import qtawesome as qta
+from PySide6.QtCore import QSize, Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QFont, QMouseEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
-    QLabel,
     QHBoxLayout,
-    QVBoxLayout,
-    QToolButton,
+    QLabel,
     QStackedWidget,
+    QToolButton,
+    QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QMouseEvent, QFont, QDesktopServices, QResizeEvent
-import qtawesome as qta
-
 from ui.util import initials as str2initials
 from ui.util import rgb_to_hex as _rgb2hex
 

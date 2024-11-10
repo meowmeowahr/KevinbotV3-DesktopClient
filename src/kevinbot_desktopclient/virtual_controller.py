@@ -1,5 +1,6 @@
-import vgamepad as vg
 import time
+
+import vgamepad as vg
 
 gamepad = vg.VX360Gamepad()
 time.sleep(5)

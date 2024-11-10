@@ -2,16 +2,16 @@
 PySide6 MJPEG Stream Viewer and Widget
 """
 
-import requests
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget, QSizePolicy
-from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtCore import QThread, Signal, Qt
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
 import textwrap
-import urllib3
+from io import BytesIO
 
+import requests
+import urllib3
 from loguru import logger
+from PIL import Image, ImageDraw, ImageFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 
 def create_image_with_text(
@@ -81,7 +81,7 @@ class MJPEGStreamThread(QThread):
             requests.exceptions.ChunkedEncodingError,
             requests.exceptions.ReadTimeout,
         ) as e:
-            logger.error(f"Could not open MJPEG stream, {repr(e)}")
+            logger.error(f"Could not open MJPEG stream, {e!r}")
 
             # Create a fake frame that displays description of error
             img = create_image_with_text(

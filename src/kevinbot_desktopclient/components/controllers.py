@@ -7,21 +7,20 @@ import sys
 import typing
 import uuid
 
+import pyglet
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QRgba64
 from PySide6.QtWidgets import (
     QApplication,
-    QWidget,
-    QPushButton,
-    QListWidget,
     QHBoxLayout,
-    QVBoxLayout,
+    QListWidget,
     QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont, QRgba64, QColor
-
-import pyglet
-
 from ui.delegates import NoFocusDelegate
+
 from .uuid_manager import UuidManager
 
 

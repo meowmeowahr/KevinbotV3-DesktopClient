@@ -1,86 +1,78 @@
-from enum import Enum
-import math
-import queue
-import sys
 import os
 import platform
+import queue
+import sys
 import threading
 import time
 import traceback
-from typing import Tuple
 from dataclasses import dataclass
+from enum import Enum
 
+import ansi2html
+import constants
+import kevinbotlib
 import kevinbotlib.exceptions
-from loguru import logger
-
 import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
-from PySide6.QtCore import (
-    QSize,
-    QSettings,
-    qVersion,
-    Qt,
-    QTimer,
-    QCoreApplication,
-    Signal,
-    QCommandLineParser,
-    QBuffer,
-    QIODevice,
-    QRunnable,
-    QObject,
-    Slot,
-    QThreadPool,
+import shortuuid
+from components import (
+    ControllerManagerWidget,
+    PingWorker,
+    begin_controller_backend,
+    controllers,
 )
-from PySide6.QtGui import QIcon, QCloseEvent, QPixmap, QFont, QFontDatabase
+from components.dataplot import LivePlot
+from components.ping import PingWidget
+from Custom_Widgets.QCustomModals import QCustomModals
+from enums import Cardinal
+from loguru import logger
+from PySide6.QtCore import (
+    QBuffer,
+    QCommandLineParser,
+    QCoreApplication,
+    QIODevice,
+    QObject,
+    QRunnable,
+    QSettings,
+    QSize,
+    Qt,
+    QThreadPool,
+    QTimer,
+    Signal,
+    Slot,
+    qVersion,
+)
+from PySide6.QtGui import QCloseEvent, QFont, QFontDatabase, QIcon, QPixmap
 from PySide6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QMainWindow,
-    QWidget,
     QApplication,
-    QTabWidget,
-    QToolBox,
-    QLabel,
-    QRadioButton,
-    QSplitter,
-    QTextEdit,
-    QPushButton,
-    QFileDialog,
-    QGridLayout,
     QCheckBox,
-    QScrollArea,
-    QSlider,
-    QFrame,
-    QLineEdit,
-    QToolButton,
     QDockWidget,
     QErrorMessage,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QRadioButton,
+    QScrollArea,
+    QSlider,
+    QSplitter,
     QStatusBar,
+    QTabWidget,
+    QTextEdit,
+    QToolBox,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
-from Custom_Widgets.QCustomModals import QCustomModals
-
-import ansi2html
-import shortuuid
-
-import kevinbotlib
-
-from components.ping import PingWidget
-from components.dataplot import LivePlot
-from enums import Cardinal
-from ui.util import add_tabs
-from ui.widgets import WarningBar, CustomTabWidget, AuthorWidget, ColorBlock
-from ui.plots import BatteryGraph, StickVisual, PovVisual
 from ui.mjpeg import MJPEGViewer
-
-from components import (
-    controllers,
-    ControllerManagerWidget,
-    begin_controller_backend,
-    PingWorker,
-)
-
-import constants
+from ui.plots import BatteryGraph, PovVisual, StickVisual
+from ui.util import add_tabs
+from ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, WarningBar
 
 __version__ = "0.0.0"
 __authors__ = [
@@ -162,7 +154,7 @@ class ConnectionWorker(QRunnable):
                 ConnectionRefusedError,
                 kevinbotlib.exceptions.HandshakeTimeoutException,
             ) as e:
-                logger.error(f"Failed to connect to MQTT broker: {repr(e)}")
+                logger.error(f"Failed to connect to MQTT broker: {e!r}")
                 self.signals.connection_error.emit(e, traceback.format_exc())
                 return
 
@@ -317,7 +309,7 @@ class MainWindow(QMainWindow):
         )
         self.root_layout.addWidget(self.tabs)
 
-        tabs: list[Tuple[str, QIcon]] = [
+        tabs: list[tuple[str, QIcon]] = [
             ("Main", QIcon("assets/icons/icon.svg")),
             ("Connections", qta.icon("mdi6.transit-connection-variant")),
             ("Debug", qta.icon("mdi6.bug")),
@@ -916,7 +908,7 @@ class MainWindow(QMainWindow):
             license_viewer = QTextEdit()
             license_viewer.setReadOnly(True)
             try:
-                with open(license[1], "r") as file:
+                with open(license[1]) as file:
                     license_viewer.setText(file.read())
             except FileNotFoundError:
                 buffer = QBuffer()
@@ -1031,7 +1023,7 @@ class MainWindow(QMainWindow):
         if controller == self.controller_manager.get_controllers()[0]:
 
             def apply_scaled_deadband(val, invert: bool = True):
-                if constants.CONTROLLER_DEADBAND > abs(val):
+                if abs(val) < constants.CONTROLLER_DEADBAND:
                     return 0
                 val = (
                     val
@@ -1112,7 +1104,7 @@ class MainWindow(QMainWindow):
 
     # * Robot state
     def update_states(self, topics: list[str], value: str):
-        if not self.state.app_state == AppState.CONNECTED:
+        if self.state.app_state != AppState.CONNECTED:
             return
 
         if self.robot.get_state().enabled:
@@ -1320,7 +1312,7 @@ def controller_backend():  # pragma: no cover
     try:
         begin_controller_backend()
     except RuntimeError as e:
-        logger.error(f"Error in controller backend: {repr(e)}")
+        logger.error(f"Error in controller backend: {e!r}")
         controller_backend()
 
 

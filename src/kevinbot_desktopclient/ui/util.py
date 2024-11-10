@@ -1,10 +1,8 @@
-from typing import Tuple
-
 from urllib.parse import urlparse, urlunparse
 
-from PySide6.QtGui import QIcon, QTransform
-from PySide6.QtWidgets import QWidget, QTabWidget
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QTransform
+from PySide6.QtWidgets import QTabWidget, QWidget
 
 
 def rotate_icon(icon: QIcon, angle: float) -> QIcon:
@@ -20,7 +18,7 @@ def rotate_icon(icon: QIcon, angle: float) -> QIcon:
     return QIcon(rotated_pixmap)
 
 
-def add_tabs(bar: QTabWidget, tabs: list[Tuple[str, QIcon]]) -> list[QWidget]:
+def add_tabs(bar: QTabWidget, tabs: list[tuple[str, QIcon]]) -> list[QWidget]:
     widgets = []
     for tab_options in tabs:
         widget = QWidget()

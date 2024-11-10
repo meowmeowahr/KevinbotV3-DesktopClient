@@ -1,5 +1,5 @@
 import icmplib
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 

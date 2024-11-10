@@ -1,8 +1,6 @@
-from PySide6.QtWidgets import QWidget, QProgressBar, QGridLayout, QLabel
-
-import pyqtgraph as pg
-
 import enums
+import pyqtgraph as pg
+from PySide6.QtWidgets import QGridLayout, QLabel, QProgressBar, QWidget
 
 
 class BatteryGraph(pg.PlotWidget):

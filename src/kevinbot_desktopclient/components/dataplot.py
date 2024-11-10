@@ -1,23 +1,23 @@
-from typing import Dict, List, Callable, Optional
-import sys
-import random
 import math
+import random
+import sys
+from collections.abc import Callable
+
 import pyqtgraph as pg
+from PySide6.QtCore import QSize, QTimer, SignalInstance
 from PySide6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
     QCheckBox,
-    QLabel,
+    QFrame,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
     QPushButton,
     QSpinBox,
-    QFrame,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import QTimer, SignalInstance, QSize
-
 from ui.widgets import ColorBlock
 
 
@@ -71,15 +71,15 @@ class LivePlot(QMainWindow):
         super().__init__()
 
         # Initialize data structures for dynamic sources
-        self.data_sources: Dict[str, Callable[[float], float]] = {}
-        self.source_checkboxes: Dict[str, DataSourceCheckBox] = {}
-        self.data_y: Dict[str, List[float]] = {}
-        self.plot_data_items: Dict[str, pg.PlotDataItem] = {}
+        self.data_sources: dict[str, Callable[[float], float]] = {}
+        self.source_checkboxes: dict[str, DataSourceCheckBox] = {}
+        self.data_y: dict[str, list[float]] = {}
+        self.plot_data_items: dict[str, pg.PlotDataItem] = {}
 
         self._setup_ui()
 
         # Initialize the data series for real-time updates
-        self.data_x: List[float] = []
+        self.data_x: list[float] = []
         self.plot_x: float = 0
 
         # Timer to update data

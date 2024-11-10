@@ -2,7 +2,7 @@
 Useful delegates for Qt
 """
 
-from PySide6.QtWidgets import QStyledItemDelegate, QStyle, QStyleOptionViewItem
+from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 
 class NoFocusDelegate(QStyledItemDelegate):

@@ -1,10 +1,9 @@
-from PySide6.QtCore import QObject, Signal
 import serial
 import serial.tools.list_ports
 import serial.tools.list_ports_linux
-from xbee import XBee
-
 from loguru import logger
+from PySide6.QtCore import QObject, Signal
+from xbee import XBee
 
 
 class XBeeManager(QObject):
@@ -28,9 +27,7 @@ class XBeeManager(QObject):
         """Return a list of available serial ports."""
         port_strs = []
         for port in serial.tools.list_ports.comports():
-            if not system and not port.device.startswith("/dev/ttyS"):
-                port_strs.append(port.device)
-            elif system:
+            if not system and not port.device.startswith("/dev/ttyS") or system:
                 port_strs.append(port.device)
         return port_strs
 
@@ -51,7 +48,7 @@ class XBeeManager(QObject):
             self.on_open.emit()
 
         except serial.SerialException as e:
-            self.on_error.emit(f"Serial error: {str(e)}")
+            self.on_error.emit(f"Serial error: {e!s}")
 
     def halt(self):
         if self.xbee:
@@ -96,7 +93,7 @@ class XBeeManager(QObject):
             # Emit the full packet through on_data
             self.on_data.emit(packet)
         except Exception as e:
-            self.on_error.emit(f"Error handling packet: {repr(e)}")
+            self.on_error.emit(f"Error handling packet: {e!r}")
 
     def broadcast(self, message: str):
         """Send a broadcast message to all devices."""
@@ -105,7 +102,7 @@ class XBeeManager(QObject):
                 self.xbee.send(
                     "tx",
                     dest_addr=b"\x00\x00",
-                    data=bytes("{}\n".format(message), "utf-8"),
+                    data=bytes(f"{message}\n", "utf-8"),
                 )
                 logger.trace(f"Broadcasted message: {message}")
             else:
@@ -114,4 +111,4 @@ class XBeeManager(QObject):
                     f"Cannot broadcast message, {message}: XBee not connected"
                 )
         except Exception as e:
-            self.on_error.emit(f"Error broadcasting message: {repr(e)}")
+            self.on_error.emit(f"Error broadcasting message: {e!r}")

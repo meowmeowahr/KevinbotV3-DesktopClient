@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainter
 from PySide6.QtWidgets import QSlider
-from PySide6.QtGui import QPainter, QBrush, QColor, QLinearGradient
 
 
 class GradientSlider(QSlider):

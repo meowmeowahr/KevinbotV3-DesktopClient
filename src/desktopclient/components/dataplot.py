@@ -4,30 +4,40 @@ import random
 import math
 import pyqtgraph as pg
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
-    QWidget, QCheckBox, QLabel, QGroupBox, QPushButton,
-    QSpinBox, QFrame
+    QApplication,
+    QMainWindow,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QCheckBox,
+    QLabel,
+    QGroupBox,
+    QPushButton,
+    QSpinBox,
+    QFrame,
 )
-from PySide6.QtCore import QTimer, SignalInstance
+from PySide6.QtCore import QTimer, SignalInstance, QSize
 
-from desktopclient.ui.widgets import ColorBlock
+from ui.widgets import ColorBlock
+
 
 def color_string_to_hex(color_str):
     # Map of shorthand color strings to their hex codes
     color_map = {
-        'w': '#FFFFFF',  # White
-        'r': '#FF0000',  # Red
-        'g': '#00FF00',  # Green
-        'b': '#0000FF',  # Blue
-        'c': '#00FFFF',  # Cyan
-        'm': '#FF00FF',  # Magenta
-        'y': '#FFFF00',  # Yellow
-        'k': '#000000',  # Black
-        'gray': '#808080' # Gray
+        "w": "#FFFFFF",  # White
+        "r": "#FF0000",  # Red
+        "g": "#00FF00",  # Green
+        "b": "#0000FF",  # Blue
+        "c": "#00FFFF",  # Cyan
+        "m": "#FF00FF",  # Magenta
+        "y": "#FFFF00",  # Yellow
+        "k": "#000000",  # Black
+        "gray": "#808080",  # Gray
     }
-    
+
     # Return the hex code or None if the color is not recognized
     return color_map.get(color_str, color_str)
+
 
 class DataSourceCheckBox(QFrame):
     def __init__(self, source_name: str, color: str) -> None:
@@ -51,29 +61,31 @@ class DataSourceCheckBox(QFrame):
         layout.addWidget(self.label)
 
         self.color = ColorBlock()
+        self.color.setMinimumSize(QSize(10, 10))
         self.color.set_color(color_string_to_hex(color))
+        layout.addWidget(self.color)
+
 
 class LivePlot(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        
+
         # Initialize data structures for dynamic sources
         self.data_sources: Dict[str, Callable[[float], float]] = {}
         self.source_checkboxes: Dict[str, DataSourceCheckBox] = {}
         self.data_y: Dict[str, List[float]] = {}
         self.plot_data_items: Dict[str, pg.PlotDataItem] = {}
-        
+
         self._setup_ui()
-        
+
         # Initialize the data series for real-time updates
         self.data_x: List[float] = []
         self.plot_x: float = 0
-        
+
         # Timer to update data
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
         self.timer.start(100)  # 100ms default update rate
-        
 
     def _setup_ui(self) -> None:
         """Set up the user interface components."""
@@ -124,17 +136,10 @@ class LivePlot(QMainWindow):
         sidebar = QWidget()
         sidebar_layout = QVBoxLayout(sidebar)
 
-        # Data sources group
+        # Data sources
         self.source_group = QGroupBox("Data Sources")
         self.source_layout = QVBoxLayout(self.source_group)
         sidebar_layout.addWidget(self.source_group)
-
-        # Data to Graph group
-        self.graph_group = QGroupBox("Data to Graph")
-        graph_layout = QVBoxLayout(self.graph_group)
-        self.graph_data_label = QLabel("Current Sources: None")
-        graph_layout.addWidget(self.graph_data_label)
-        sidebar_layout.addWidget(self.graph_group)
 
         # Add sidebar to main layout
         main_layout.addWidget(sidebar)
@@ -144,8 +149,8 @@ class LivePlot(QMainWindow):
         main_layout.addWidget(self.plot_widget)
 
         # Set plot ranges and labels
-        self.plot_widget.setLabel('left', 'Value')
-        self.plot_widget.setLabel('bottom', 'Time', units='s')
+        self.plot_widget.setLabel("left", "Value")
+        self.plot_widget.setLabel("bottom", "Time", units="s")
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.showGrid(x=True, y=True)
         pg.setConfigOptions(antialias=True)
@@ -173,7 +178,7 @@ class LivePlot(QMainWindow):
 
     def update_timer_interval(self, value: int) -> None:
         """Update the timer interval for data updates.
-        
+
         Args:
             value: New interval in milliseconds
         """
@@ -184,10 +189,12 @@ class LivePlot(QMainWindow):
         if was_active:
             self.timer.start()
 
-    def add_data_source(self, name: str, func: Callable[[float], float], color: str = 'w') -> None:
+    def add_data_source(
+        self, name: str, func: Callable[[float], float], color: str = "w"
+    ) -> None:
         """
         Add a new data source to the plot.
-        
+
         Args:
             name: The name of the data source
             func: A function that takes a float x value and returns a float y value
@@ -195,16 +202,15 @@ class LivePlot(QMainWindow):
         """
         if name in self.data_sources:
             raise ValueError(f"Data source '{name}' already exists")
-            
+
         # Add the source function
         self.data_sources[name] = func
-        
+
         # Create a checkbox for the source
         checkbox = DataSourceCheckBox(name, color)
-        checkbox.stateChanged.connect(self.select_sources)
         self.source_checkboxes[name] = checkbox
         self.source_layout.addWidget(checkbox)
-        
+
         # Initialize data structures for the new source
         self.data_y[name] = []
         self.plot_data_items[name] = self.plot_widget.plot(pen=color)
@@ -212,28 +218,24 @@ class LivePlot(QMainWindow):
     def remove_data_source(self, name: str) -> None:
         """
         Remove a data source from the plot.
-        
+
         Args:
             name: The name of the data source to remove
         """
         if name not in self.data_sources:
             raise ValueError(f"Data source '{name}' does not exist")
-            
+
         # Remove the checkbox
         self.source_checkboxes[name].deleteLater()
         del self.source_checkboxes[name]
-        
+
         # Remove the data
         del self.data_sources[name]
         del self.data_y[name]
-        
+
         # Remove the plot item
         self.plot_widget.removeItem(self.plot_data_items[name])
         del self.plot_data_items[name]
-        
-        # Update the display
-        self.select_sources()
-
 
     def update_plot(self) -> None:
         """Update the plot with new data points."""
@@ -248,21 +250,11 @@ class LivePlot(QMainWindow):
 
             # Update the plot data item, but set visibility based on selection
             self.plot_data_items[name].setData(self.data_x, self.data_y[name])
-            self.plot_data_items[name].setVisible(self.source_checkboxes[name].isChecked())
+            self.plot_data_items[name].setVisible(
+                self.source_checkboxes[name].isChecked()
+            )
 
         self.plot_x += 0.1  # Increment x-value by 0.1
-
-    def select_sources(self) -> None:
-        """Update the sources to graph based on selected checkboxes."""
-        selected_sources = [
-            name for name, checkbox in self.source_checkboxes.items()
-            if checkbox.isChecked()
-        ]
-
-        # Update the label to show selected sources
-        sources_text = ', '.join(selected_sources) if selected_sources else 'None'
-        self.graph_data_label.setText(f"Current Sources: {sources_text}")
-
 
 
 if __name__ == "__main__":
@@ -270,12 +262,18 @@ if __name__ == "__main__":
     window = LivePlot()
 
     # Add default sources
-    window.add_data_source("sin", math.sin, 'c')  # Cyan for sine wave
-    window.add_data_source("cos", math.cos, 'r')  # Red for cosine wave
-    window.add_data_source("tan", math.tan, 'm')  # Magenta for tangent wave
-    window.add_data_source("exp", lambda x: math.exp(x), 'b')  # Blue for exponential data
-    window.add_data_source("sqrt", lambda x: math.sqrt(x), 'y')  # Yellow for square root data
-    window.add_data_source("rand", lambda x: random.randint(-100, 100) / 100, 'g')  # Green for random data
+    window.add_data_source("sin", math.sin, "c")  # Cyan for sine wave
+    window.add_data_source("cos", math.cos, "r")  # Red for cosine wave
+    window.add_data_source("tan", math.tan, "m")  # Magenta for tangent wave
+    window.add_data_source(
+        "exp", lambda x: math.exp(x), "b"
+    )  # Blue for exponential data
+    window.add_data_source(
+        "sqrt", lambda x: math.sqrt(x), "y"
+    )  # Yellow for square root data
+    window.add_data_source(
+        "rand", lambda x: random.randint(-100, 100) / 100, "g"
+    )  # Green for random data
 
     window.show()
     sys.exit(app.exec())

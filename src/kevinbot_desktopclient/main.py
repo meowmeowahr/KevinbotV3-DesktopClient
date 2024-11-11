@@ -605,6 +605,15 @@ class MainWindow(QMainWindow):
         self.plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
         self.plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
 
+        self.plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.left_power, "#ff5722")
+        self.plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.right_power, "#2196f3")
+
+        self.plot.add_data_source("Drive/LeftAmps", lambda _: self.robot.get_state().motion.amps[0], "#8bc34a")
+        self.plot.add_data_source("Drive/RightAmps", lambda _: self.robot.get_state().motion.amps[1], "#673ab7")
+
+        self.plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
+        self.plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
+
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()
 

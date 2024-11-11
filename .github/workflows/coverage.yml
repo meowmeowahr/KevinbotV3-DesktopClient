@@ -37,13 +37,8 @@ jobs:
       - name: Install Hatch
         run: pip install hatch
 
-      - name: Install test dependencies
-        run: |
-          hatch env create  # Creates the Hatch environment and installs project dependencies
-          hatch run pip install pytest pytest-cov pytest-qt mock  # Install additional testing dependencies if not in requirements
-
       - name: Run tests and collect coverage
-        run: hatch run pytest --cov
+        run: hatch test --cover
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@v4

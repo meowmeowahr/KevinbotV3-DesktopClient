@@ -74,9 +74,12 @@ class DataSourceCheckBox(QFrame):
         self.color.set_color(color_string_to_hex(color))
         layout.addWidget(self.color)
 
+    def set_color(self, color: str):
+        self.color.set_color(color_string_to_hex(color))
+
 
 class DataSourceManagerItem(QFrame):
-    color_changed = Signal(str)
+    color_changed = Signal(str, str)
     def __init__(self, source_name: str, color: str) -> None:
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -113,8 +116,12 @@ class DataSourceManagerItem(QFrame):
             self.color.addItem(QIcon(pixmap), col, col)
             self.color.setItemData(0, Qt.AlignmentFlag.AlignCenter, Qt.ItemDataRole.TextAlignmentRole)
         self.color.setCurrentText(str(color))
+        self.color.currentIndexChanged.connect(self._color_changed_event)
 
         layout.addWidget(self.color)
+
+    def _color_changed_event(self, _index: int) -> None:
+        self.color_changed.emit(self.label.text(), self.color.currentText())
 
 
 class LivePlot(QMainWindow):
@@ -305,6 +312,7 @@ class LivePlot(QMainWindow):
         """
         self.data_sources[name]["color"] = color
         self.plot_data_items[name].setPen(pg.mkPen(color, width=self.data_sources[name]["width"]))
+        self.source_checkboxes[name].set_color(color)
 
     def edit_pen_width(self, name: str, width: int):
         """

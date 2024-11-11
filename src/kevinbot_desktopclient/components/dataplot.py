@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
+    QScrollArea,
 )
 
 from kevinbot_desktopclient.ui.widgets import ColorBlock
@@ -258,7 +259,6 @@ class LivePlot(QMainWindow):
         """Update the plot with new data points."""
         # Add new x value
         self.data_x.append(self.plot_x)
-        self.update_crosshair([0, 0])
 
         # Update each data source
         for name, func in self.data_sources.items():

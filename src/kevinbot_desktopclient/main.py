@@ -1,3 +1,4 @@
+import json
 import os
 import platform
 import queue
@@ -605,11 +606,20 @@ class MainWindow(QMainWindow):
         for plot in self.plots:
             if name in plot.get_data_sources():
                 plot.edit_pen_color(name, color)
+        self.save_plot_settings()
 
     def update_plots_width(self, name: str, width: int):
         for plot in self.plots:
             if name in plot.get_data_sources():
                 plot.edit_pen_width(name, width)
+        self.save_plot_settings()
+
+    def save_plot_settings(self):
+        data: list[dict] = []
+        for plot in self.plots:
+            for key, value in plot.get_data_sources().items():
+                data.append({"name": key, "color": value["color"], "width": value["width"], "enabled": value["enabled"]})
+        self.settings.setValue("plot/settings", json.dumps(data))
 
     def add_plot(self, title="Plot"):
         dock = QDockWidget("Plot")

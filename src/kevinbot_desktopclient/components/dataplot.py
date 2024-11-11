@@ -80,7 +80,8 @@ class DataSourceCheckBox(QFrame):
 
 class DataSourceManagerItem(QFrame):
     color_changed = Signal(str, str)
-    def __init__(self, source_name: str, color: str) -> None:
+    width_changed = Signal(str, int)
+    def __init__(self, source_name: str, color: str, width: int) -> None:
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setObjectName("DataSourceCheckBoxFrame")
@@ -91,6 +92,13 @@ class DataSourceManagerItem(QFrame):
 
         self.label = QLabel(source_name)
         layout.addWidget(self.label)
+
+        self.width_select = QComboBox()
+        for i in range(1, 6):
+            self.width_select.addItem(str(i), i)
+        self.width_select.setCurrentIndex(width - 1)
+        self.width_select.currentIndexChanged.connect(self._width_changed_event)
+        layout.addWidget(self.width_select)
 
         self.color = QComboBox()
 
@@ -122,6 +130,9 @@ class DataSourceManagerItem(QFrame):
 
     def _color_changed_event(self, _index: int) -> None:
         self.color_changed.emit(self.label.text(), self.color.currentText())
+
+    def _width_changed_event(self, _index: int) -> None:
+        self.width_changed.emit(self.label.text(), self.width_select.currentData())
 
 
 class LivePlot(QMainWindow):

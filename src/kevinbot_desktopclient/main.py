@@ -594,8 +594,9 @@ class MainWindow(QMainWindow):
             item.setSizeHint(QSize(320, 44))
             list_view.addItem(item)
 
-            source_manager = DataSourceManagerItem(name, data["color"])
+            source_manager = DataSourceManagerItem(name, data["color"], data["width"])
             source_manager.color_changed.connect(self.update_plots_color)
+            source_manager.width_changed.connect(self.update_plots_width)
             list_view.setItemWidget(item, source_manager)
 
         return layout
@@ -604,6 +605,11 @@ class MainWindow(QMainWindow):
         for plot in self.plots:
             if name in plot.get_data_sources():
                 plot.edit_pen_color(name, color)
+
+    def update_plots_width(self, name: str, width: int):
+        for plot in self.plots:
+            if name in plot.get_data_sources():
+                plot.edit_pen_width(name, width)
 
     def add_plot(self, title="Plot"):
         dock = QDockWidget("Plot")

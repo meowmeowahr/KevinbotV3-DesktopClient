@@ -141,7 +141,7 @@ class LivePlot(QMainWindow):
 
         # Data sources
         self.source_group = QGroupBox("Data Sources")
-        sidebar_layout.addWidget(self.source_group, 2)
+        sidebar_layout.addWidget(self.source_group, 3)
 
         self.source_root_layout = QVBoxLayout()
         self.source_root_layout.setContentsMargins(0, 4, 0, 0)
@@ -231,6 +231,8 @@ class LivePlot(QMainWindow):
         # Initialize data structures for the new source
         self.data_y[name] = []
         self.plot_data_items[name] = self.plot_widget.plot(pen=color)
+
+        self.source_group.setFixedWidth(self.source_group.sizeHint().width() + 28)
 
     def remove_data_source(self, name: str) -> None:
         """

@@ -601,6 +601,10 @@ class MainWindow(QMainWindow):
         self.plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
         self.plot.add_data_source("Enviro/Pres", lambda _: self.robot.get_state().enviro.pressure, "#cddc39")
 
+        self.plot.add_data_source("Thermo/LeftMotor", lambda _: self.robot.get_state().thermal.left_motor, "#ff9800")
+        self.plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
+        self.plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
+
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()
 

@@ -597,6 +597,10 @@ class MainWindow(QMainWindow):
         for i in range(len(self.robot.get_state().battery.voltages)):
             self.plot.add_data_source(f"Battery/Voltage{i+1}", partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]), ['r', 'g', 'b', 'm'][i%3])
 
+        self.plot.add_data_source("Enviro/Temp", lambda _: self.robot.get_state().enviro.temperature, "#e91e63")
+        self.plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
+        self.plot.add_data_source("Enviro/Pres", lambda _: self.robot.get_state().enviro.pressure, "#cddc39")
+
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()
 

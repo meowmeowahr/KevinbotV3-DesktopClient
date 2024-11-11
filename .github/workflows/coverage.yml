@@ -1,10 +1,12 @@
 name: Run tests and upload coverage
 
 on: 
-  push
+  push:
+    branches:
+      - main
+  pull_request:
 
 env:
-  # Display must be available globally for linux to know where xvfb is
   DISPLAY: ":99.0"
   QT_SELECT: "qt6"
 
@@ -12,31 +14,39 @@ jobs:
   test:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
       - name: Setup xvfb (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Stuff copied wildly from several stackoverflow posts
+          sudo apt-get update
           sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 libxcb-shape0 libglib2.0-0 libgl1-mesa-dev
-          sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
-          # start xvfb in the background
+          sudo apt-get install -y '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
           sudo /usr/bin/Xvfb $DISPLAY -screen 0 1280x1024x24 &
-      - name: Install dependencies
-        run: pip install pytest pytest-cov pytest-qt mock && pip install -r requirements.txt
 
-      - name: Run tests
-        run: pytest --cov
+      - name: Install Hatch
+        run: pip install hatch
 
-      - name: Upload results to Codecov
+      - name: Install test dependencies
+        run: |
+          hatch env create  # Creates the Hatch environment and installs project dependencies
+          hatch run pip install pytest pytest-cov pytest-qt mock  # Install additional testing dependencies if not in requirements
+
+      - name: Run tests and collect coverage
+        run: hatch run pytest --cov
+
+      - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          verbose: true
+          verbose: true 

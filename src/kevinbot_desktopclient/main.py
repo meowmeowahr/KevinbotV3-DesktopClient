@@ -286,6 +286,24 @@ class MainWindow(QMainWindow):
         self.left_stick_update.connect(self.drivecmd)
         self.right_stick_update.connect(self.drivecmd)
 
+        # * Style Overrides
+        self.setStyleSheet(
+            "#enable_button, #disable_button, #estop_button {"
+            "font-size: 24px;"
+            "font-weight: bold;"
+            "color: #212121;"
+            "}"
+            "#enable_button {"
+            "background-color: #00C853;"
+            "}"
+            "#disable_button {"
+            "background-color: #EF5350;"
+            "}"
+            "#estop_button {"
+            "background-color: #FF9722;"
+            "}"
+        )
+
         # * Tabs
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(36, 36))
@@ -310,6 +328,7 @@ class MainWindow(QMainWindow):
 
         tabs: list[tuple[str, QIcon]] = [
             ("Main", QIcon("assets/icons/icon.svg")),
+            ("Plots", qta.icon("mdi6.chart-multiple")),
             ("Controllers", qta.icon("mdi6.controller")),
             ("Debug", qta.icon("mdi6.bug")),
             ("Settings", qta.icon("mdi6.cog")),
@@ -317,6 +336,7 @@ class MainWindow(QMainWindow):
         ]
         (
             self.main,
+            self.plots,
             self.connection_widget,
             self.debug,
             self.settings_widget,
@@ -334,23 +354,6 @@ class MainWindow(QMainWindow):
         # * Main Tab
         self.main_layout = QVBoxLayout()
         self.main.setLayout(self.main_layout)
-
-        self.setStyleSheet(
-            "#enable_button, #disable_button, #estop_button {"
-            "font-size: 24px;"
-            "font-weight: bold;"
-            "color: #212121;"
-            "}"
-            "#enable_button {"
-            "background-color: #00C853;"
-            "}"
-            "#disable_button {"
-            "background-color: #EF5350;"
-            "}"
-            "#estop_button {"
-            "background-color: #FF9722;"
-            "}"
-        )
 
         # * State Bar
         self.state_dock = QDockWidget("State")

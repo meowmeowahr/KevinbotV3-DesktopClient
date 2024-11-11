@@ -1,6 +1,9 @@
+from typing import override
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainter
 from PySide6.QtWidgets import QSlider
-from PySide6.QtGui import QPainter, QBrush, QColor, QLinearGradient
+
 
 class GradientSlider(QSlider):
     def __init__(self, orientation=Qt.Orientation.Vertical, parent=None):
@@ -10,7 +13,7 @@ class GradientSlider(QSlider):
         self.setValue(300)  # Example starting position for the handle
         self.setTickPosition(QSlider.TickPosition.NoTicks)
         self.setOrientation(orientation)
-        
+
         # Extend the handle to go outside the gradient area
         self.setStyleSheet("""
             QSlider::groove:horizontal {
@@ -22,12 +25,12 @@ class GradientSlider(QSlider):
                 background: transparent;
                 width: 0px;
             }
-                    
+
             QSlider:horizontal {
                 min-height: 28px;
                 max-height: 28px;
-            }          
-            
+            }
+
             QSlider:vertical {
                 min-width: 28px;
                 max-width: 28px;
@@ -48,9 +51,10 @@ class GradientSlider(QSlider):
                 background: white;
                 border: 2px solid black;
             }
-                          
+
         """)
-    
+
+    @override
     def paintEvent(self, ev):
         painter = QPainter(self)
         rect = self.rect()

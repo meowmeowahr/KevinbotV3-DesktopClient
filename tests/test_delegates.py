@@ -2,12 +2,12 @@
 Unit tests for delegates
 """
 
-from PySide6.QtWidgets import QTreeView, QStyleOptionViewItem, QStyle
+import pytest
 from PySide6.QtCore import QModelIndex
 from PySide6.QtGui import QPainter
-import pytest
+from PySide6.QtWidgets import QStyle, QStyleOptionViewItem, QTreeView
 
-from ui.delegates import NoFocusDelegate
+from kevinbot_desktopclient.ui.delegates import NoFocusDelegate
 
 
 # TODO: Clean up this (maybe) poor ChatGPT code

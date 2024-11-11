@@ -2,13 +2,15 @@
 Unit tests for main window
 """
 
-import pytest
 import queue
+
+import pytest
 from PySide6.QtWidgets import QApplication
 
 
-def test_main_window(qtbot):
-    import main
+@pytest.mark.usefixtures("qtbot")
+def test_main_window():
+    from kevinbot_desktopclient import main
 
     app = QApplication.instance()
     if app:

@@ -336,7 +336,7 @@ class MainWindow(QMainWindow):
         ]
         (
             self.main,
-            self.plots,
+            self.plot_manager_widget,
             self.connection_widget,
             self.debug,
             self.settings_widget,
@@ -482,6 +482,8 @@ class MainWindow(QMainWindow):
         self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
 
         # * Plot
+        self.plot_docks: list[QDockWidget] = []
+        self.plots: list[LivePlot] = []
         self.add_plot()
 
         self.state_label = QLabel("No Communications")
@@ -504,7 +506,7 @@ class MainWindow(QMainWindow):
         hline.setFixedHeight(2)
         self.main_layout.addWidget(hline)
 
-        self.settings_widget.setLayout(self.settings_layout(self.settings))
+        self.plot_manager_widget.setLayout(self.plot_manager_layout(self.settings, self.plots))
         self.debug.setLayout(self.debug_layout(self.settings))
         (
             self.comm_layout,
@@ -513,6 +515,7 @@ class MainWindow(QMainWindow):
             self.pov_visual,
         ) = self.connection_layout()
         self.connection_widget.setLayout(self.comm_layout)
+        self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.about_widget.setLayout(self.about_layout())
 
         # * Main Split View
@@ -571,51 +574,58 @@ class MainWindow(QMainWindow):
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.start()
 
+    def plot_manager_layout(self, settings: QSettings, plots: list[LivePlot]):
+        layout = QVBoxLayout()
+
+        return layout
+
     def add_plot(self, title="Plot"):
-        self.plot_dock = QDockWidget("Plot")
-        self.plot_dock.setFeatures(
+        dock = QDockWidget("Plot")
+        self.plot_docks.append(dock)
+        dock.setFeatures(
             QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
             | QDockWidget.DockWidgetFeature.DockWidgetMovable
             | QDockWidget.DockWidgetFeature.DockWidgetClosable
         )
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
 
-        self.plot_widget = QWidget()
-        self.plot_dock.setWidget(self.plot_widget)
+        plot_widget = QWidget()
+        dock.setWidget(plot_widget)
 
-        self.plot_layout = QVBoxLayout()
-        self.plot_widget.setLayout(self.plot_layout)
+        plot_layout = QVBoxLayout()
+        plot_widget.setLayout(plot_layout)
 
-        self.plot = LivePlot()
-        self.plot_layout.addWidget(self.plot)
+        plot = LivePlot()
+        self.plots.append(plot)
+        plot_layout.addWidget(plot)
 
-        self.plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
-        self.plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
-        self.plot.add_data_source("IMU/Gyro/Roll", lambda _: self.robot.get_state().imu.gyro[2], "b")
+        plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
+        plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
+        plot.add_data_source("IMU/Gyro/Roll", lambda _: self.robot.get_state().imu.gyro[2], "b")
 
-        self.plot.add_data_source("IMU/Accel/Yaw", lambda _: self.robot.get_state().imu.accel[0], "m")
-        self.plot.add_data_source("IMU/Accel/Pitch", lambda _: self.robot.get_state().imu.accel[1], "c")
-        self.plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
+        plot.add_data_source("IMU/Accel/Yaw", lambda _: self.robot.get_state().imu.accel[0], "m")
+        plot.add_data_source("IMU/Accel/Pitch", lambda _: self.robot.get_state().imu.accel[1], "c")
+        plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
 
         for i in range(len(self.robot.get_state().battery.voltages)):
-            self.plot.add_data_source(f"Battery/Voltage{i+1}", partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]), ['r', 'g', 'b', 'm'][i%3])
+            plot.add_data_source(f"Battery/Voltage{i+1}", partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]), ['r', 'g', 'b', 'm'][i%3])
 
-        self.plot.add_data_source("Enviro/Temp", lambda _: self.robot.get_state().enviro.temperature, "#e91e63")
-        self.plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
-        self.plot.add_data_source("Enviro/Pres", lambda _: self.robot.get_state().enviro.pressure, "#cddc39")
+        plot.add_data_source("Enviro/Temp", lambda _: self.robot.get_state().enviro.temperature, "#e91e63")
+        plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
+        plot.add_data_source("Enviro/Pres", lambda _: self.robot.get_state().enviro.pressure, "#cddc39")
 
-        self.plot.add_data_source("Thermo/LeftMotor", lambda _: self.robot.get_state().thermal.left_motor, "#ff9800")
-        self.plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
-        self.plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
+        plot.add_data_source("Thermo/LeftMotor", lambda _: self.robot.get_state().thermal.left_motor, "#ff9800")
+        plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
+        plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
 
-        self.plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.left_power, "#ff5722")
-        self.plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.right_power, "#2196f3")
+        plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.left_power, "#ff5722")
+        plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.right_power, "#2196f3")
 
-        self.plot.add_data_source("Drive/LeftAmps", lambda _: self.robot.get_state().motion.amps[0], "#8bc34a")
-        self.plot.add_data_source("Drive/RightAmps", lambda _: self.robot.get_state().motion.amps[1], "#673ab7")
+        plot.add_data_source("Drive/LeftAmps", lambda _: self.robot.get_state().motion.amps[0], "#8bc34a")
+        plot.add_data_source("Drive/RightAmps", lambda _: self.robot.get_state().motion.amps[1], "#673ab7")
 
-        self.plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
-        self.plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
+        plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
+        plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
 
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()

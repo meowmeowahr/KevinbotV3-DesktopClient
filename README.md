@@ -4,11 +4,12 @@
 
 # Kevinbot v3 Desktop Client
 
+> [!IMPORTANT]
+> This is the branch for the old Kevinbot System. Many features are missing and/or buggy. Please use the latest branch using the new KevinbotLib MQTT API.
+
 [![codecov](https://codecov.io/gh/meowmeowahr/KevinbotV3-DesktopClient/graph/badge.svg?token=7Y1GZD15MH)](https://codecov.io/gh/meowmeowahr/KevinbotV3-DesktopClient)
 [![Github Version](https://img.shields.io/github/v/release/meowmeowahr/KevinbotV3-DesktopClient?display_name=tag&include_prereleases)](https://github.com/meowmeowahr/KevinbotV3-DesktopClient/releases)
 
-> [!WARNING]
-> This application is still being developed and is not fully functional yet. Do not expect it to work!
 
 Home to the new Kevinbot v3 Desktop Client. This is intended to be a replacement for the [Remote](https://github.com/meowmeowahr/KevinbotV3-Remote).
 

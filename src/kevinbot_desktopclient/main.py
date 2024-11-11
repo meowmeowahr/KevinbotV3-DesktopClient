@@ -1,4 +1,3 @@
-from functools import partial
 import os
 import platform
 import queue
@@ -8,6 +7,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import partial
 from typing import override
 
 import ansi2html
@@ -47,6 +47,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QPushButton,
     QRadioButton,
@@ -60,6 +62,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QAbstractItemView
 )
 
 from kevinbot_desktopclient import constants
@@ -69,7 +72,7 @@ from kevinbot_desktopclient.components import (
     begin_controller_backend,
     controllers,
 )
-from kevinbot_desktopclient.components.dataplot import LivePlot
+from kevinbot_desktopclient.components.dataplot import DataSourceManagerItem, LivePlot
 from kevinbot_desktopclient.components.ping import PingWidget
 from kevinbot_desktopclient.enums import Cardinal
 from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
@@ -576,6 +579,22 @@ class MainWindow(QMainWindow):
 
     def plot_manager_layout(self, settings: QSettings, plots: list[LivePlot]):
         layout = QVBoxLayout()
+
+        list_view = QListWidget()
+        list_view.setUniformItemSizes(True)
+        list_view.setSpacing(4)
+        list_view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        layout.addWidget(list_view)
+
+        if len(self.plots) == 0:
+            return layout
+
+        for name, data in self.plots[0].get_data_sources().items():
+            item = QListWidgetItem(name)
+            item.setSizeHint(QSize(320, 44))
+            list_view.addItem(item)
+
+            list_view.setItemWidget(item, DataSourceManagerItem(name, data["color"]))
 
         return layout
 

@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, QTimer, SignalInstance
+from PySide6.QtCore import QSize, QTimer, SignalInstance, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -140,15 +140,30 @@ class LivePlot(QMainWindow):
 
         # Data sources
         self.source_group = QGroupBox("Data Sources")
-        self.source_layout = QVBoxLayout(self.source_group)
-        sidebar_layout.addWidget(self.source_group)
+        sidebar_layout.addWidget(self.source_group, 2)
+
+        self.source_root_layout = QVBoxLayout()
+        self.source_root_layout.setContentsMargins(0, 4, 0, 0)
+        self.source_group.setLayout(self.source_root_layout)
+
+        self.source_scroll = QScrollArea()
+        self.source_scroll.setWidgetResizable(True)
+        self.source_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.source_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.source_root_layout.addWidget(self.source_scroll)
+
+        self.source_scroll_widget = QWidget()
+        self.source_scroll.setWidget(self.source_scroll_widget)
+
+        self.source_layout = QVBoxLayout()
+        self.source_scroll_widget.setLayout(self.source_layout)
 
         # Add sidebar to main layout
         main_layout.addWidget(sidebar)
 
         # Initialize the plot widget
         self.plot_widget = pg.PlotWidget()
-        main_layout.addWidget(self.plot_widget)
+        main_layout.addWidget(self.plot_widget, 5)
 
         # Set plot ranges and labels
         self.plot_widget.setLabel("left", "Value")
@@ -243,6 +258,7 @@ class LivePlot(QMainWindow):
         """Update the plot with new data points."""
         # Add new x value
         self.data_x.append(self.plot_x)
+        self.update_crosshair([0, 0])
 
         # Update each data source
         for name, func in self.data_sources.items():

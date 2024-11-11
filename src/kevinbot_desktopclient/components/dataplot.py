@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, QTimer, SignalInstance, Qt
+from PySide6.QtCore import QSize, QTimer, SignalInstance, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -70,11 +70,13 @@ class DataSourceCheckBox(QFrame):
 
 
 class LivePlot(QMainWindow):
+    on_data_source_selection_changed = Signal(str, bool)
+
     def __init__(self) -> None:
         super().__init__()
 
         # Initialize data structures for dynamic sources
-        self.data_sources: dict[str, Callable[[float], float]] = {}
+        self.data_sources: dict[str, dict] = {}
         self.source_checkboxes: dict[str, DataSourceCheckBox] = {}
         self.data_y: dict[str, list[float]] = {}
         self.plot_data_items: dict[str, pg.PlotDataItem] = {}
@@ -207,7 +209,7 @@ class LivePlot(QMainWindow):
         if was_active:
             self.timer.start()
 
-    def add_data_source(self, name: str, func: Callable[[float], float], color: str = "w") -> None:
+    def add_data_source(self, name: str, func: Callable[[float], float], color: str = "w", width: int = 2, *, enabled = False) -> None:
         """
         Add a new data source to the plot.
 
@@ -221,18 +223,29 @@ class LivePlot(QMainWindow):
             raise ValueError(msg)
 
         # Add the source function
-        self.data_sources[name] = func
+        self.data_sources[name] = {"func": func, "color": color, "width": width, "enabled": enabled}
 
         # Create a checkbox for the source
         checkbox = DataSourceCheckBox(name, color)
+        if enabled:
+            checkbox.setChecked(True)
+        checkbox.stateChanged.connect(lambda: self._update_selected_source(name))
         self.source_checkboxes[name] = checkbox
         self.source_layout.addWidget(checkbox)
 
         # Initialize data structures for the new source
         self.data_y[name] = []
-        self.plot_data_items[name] = self.plot_widget.plot(pen=color)
+        self.plot_data_items[name] = self.plot_widget.plot(pen=pg.mkPen(color, width=width))
 
         self.source_group.setFixedWidth(self.source_group.sizeHint().width() + 28)
+
+    def _update_selected_source(self, name: str) -> None:
+        """Update the visibility of a data source."""
+        self.data_sources[name]["enabled"] = self.source_checkboxes[name].isChecked()
+        self.on_data_source_selection_changed.emit(name, self.source_checkboxes[name].isChecked())
+
+    def get_data_sources(self):
+        return self.data_sources
 
     def remove_data_source(self, name: str) -> None:
         """
@@ -263,14 +276,14 @@ class LivePlot(QMainWindow):
         self.data_x.append(self.plot_x)
 
         # Update each data source
-        for name, func in self.data_sources.items():
+        for name, data in self.data_sources.items():
             # Generate the y-value using the source function
-            y_value = func(self.plot_x)
+            y_value = data["func"](self.plot_x)
             self.data_y[name].append(y_value)
 
             # Update the plot data item, but set visibility based on selection
             self.plot_data_items[name].setData(self.data_x, self.data_y[name])
-            self.plot_data_items[name].setVisible(self.source_checkboxes[name].isChecked())
+            self.plot_data_items[name].setVisible(data["enabled"])
 
         self.plot_x += 0.1  # Increment x-value by 0.1
 

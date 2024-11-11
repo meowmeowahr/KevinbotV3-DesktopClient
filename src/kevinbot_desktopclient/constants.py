@@ -14,3 +14,5 @@ CUSTOM_COLORS_DARK: dict[str, str | dict[str, str]] | None = {
 }
 
 CONTROLLER_DEADBAND = 0.12
+
+STATE_LABEL_PULSE_COUNT = 5

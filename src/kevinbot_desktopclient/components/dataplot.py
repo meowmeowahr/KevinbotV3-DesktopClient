@@ -1,24 +1,25 @@
-from typing import Dict, List, Callable, Optional
-import sys
-import random
 import math
+import random
+import sys
+from collections.abc import Callable
+
 import pyqtgraph as pg
+from PySide6.QtCore import QSize, QTimer, SignalInstance
 from PySide6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
     QCheckBox,
-    QLabel,
+    QFrame,
     QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
     QPushButton,
     QSpinBox,
-    QFrame,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import QTimer, SignalInstance, QSize
 
-from ui.widgets import ColorBlock
+from kevinbot_desktopclient.ui.widgets import ColorBlock
 
 
 def color_string_to_hex(color_str):
@@ -72,15 +73,15 @@ class LivePlot(QMainWindow):
         super().__init__()
 
         # Initialize data structures for dynamic sources
-        self.data_sources: Dict[str, Callable[[float], float]] = {}
-        self.source_checkboxes: Dict[str, DataSourceCheckBox] = {}
-        self.data_y: Dict[str, List[float]] = {}
-        self.plot_data_items: Dict[str, pg.PlotDataItem] = {}
+        self.data_sources: dict[str, Callable[[float], float]] = {}
+        self.source_checkboxes: dict[str, DataSourceCheckBox] = {}
+        self.data_y: dict[str, list[float]] = {}
+        self.plot_data_items: dict[str, pg.PlotDataItem] = {}
 
         self._setup_ui()
 
         # Initialize the data series for real-time updates
-        self.data_x: List[float] = []
+        self.data_x: list[float] = []
         self.plot_x: float = 0
 
         # Timer to update data
@@ -190,9 +191,7 @@ class LivePlot(QMainWindow):
         if was_active:
             self.timer.start()
 
-    def add_data_source(
-        self, name: str, func: Callable[[float], float], color: str = "w"
-    ) -> None:
+    def add_data_source(self, name: str, func: Callable[[float], float], color: str = "w") -> None:
         """
         Add a new data source to the plot.
 
@@ -202,7 +201,8 @@ class LivePlot(QMainWindow):
             color: The color to use for plotting (default: white)
         """
         if name in self.data_sources:
-            raise ValueError(f"Data source '{name}' already exists")
+            msg = f"Data source '{name}' already exists"
+            raise ValueError(msg)
 
         # Add the source function
         self.data_sources[name] = func
@@ -224,7 +224,8 @@ class LivePlot(QMainWindow):
             name: The name of the data source to remove
         """
         if name not in self.data_sources:
-            raise ValueError(f"Data source '{name}' does not exist")
+            msg = f"Data source '{name}' does not exist"
+            raise ValueError(msg)
 
         # Remove the checkbox
         self.source_checkboxes[name].deleteLater()
@@ -251,9 +252,7 @@ class LivePlot(QMainWindow):
 
             # Update the plot data item, but set visibility based on selection
             self.plot_data_items[name].setData(self.data_x, self.data_y[name])
-            self.plot_data_items[name].setVisible(
-                self.source_checkboxes[name].isChecked()
-            )
+            self.plot_data_items[name].setVisible(self.source_checkboxes[name].isChecked())
 
         self.plot_x += 0.1  # Increment x-value by 0.1
 
@@ -266,14 +265,12 @@ if __name__ == "__main__":
     window.add_data_source("sin", math.sin, "c")  # Cyan for sine wave
     window.add_data_source("cos", math.cos, "r")  # Red for cosine wave
     window.add_data_source("tan", math.tan, "m")  # Magenta for tangent wave
+    window.add_data_source("exp", lambda x: math.exp(x), "b")  # Blue for exponential data
+    window.add_data_source("sqrt", lambda x: math.sqrt(x), "y")  # Yellow for square root data
     window.add_data_source(
-        "exp", lambda x: math.exp(x), "b"
-    )  # Blue for exponential data
-    window.add_data_source(
-        "sqrt", lambda x: math.sqrt(x), "y"
-    )  # Yellow for square root data
-    window.add_data_source(
-        "rand", lambda x: random.randint(-100, 100) / 100, "g"
+        "rand",
+        lambda _: random.randint(-100, 100) / 100,  # noqa: S311
+        "g",
     )  # Green for random data
 
     window.show()

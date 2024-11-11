@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kevinbot-desktopclient"
+dynamic = ["version"]
+description = 'Desktop App for controlling Kevinbot v3 using KevinbotLib'
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = "GPL-3.0-or-later"
+keywords = []
+authors = [
+  { name = "meowmeowahr", email = "meowmeowahr@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "loguru~=0.7.2",
+  "ansi2html~=1.9.2",
+  "shortuuid~=1.0.13",
+  "pyglet~=2.0.18",
+  "kevinbotlib@git+https://github.com/meowmeowahr/kevinbotlib/",
+  "icmplib@git+https://github.com/meowmeowahr/icmplib/@types",
+  "pyserial~=3.5",
+  "PySide6~=6.8.0",
+  "qtawesome~=1.3.1",
+  "pyqtgraph~=0.13.7",
+  "QT-PyQt-PySide-Custom-Widgets~=1.0.2",
+  "requests~=2.32.3",
+  "Pillow~=10.4.0",
+  "pyqtdarktheme@git+https://github.com/woopelderly/PyQtDarkTheme/@python3.12"
+]
+
+[project.urls]
+Documentation = "https://github.com/meowmeowahr/kevinbot-desktopclient#readme"
+Issues = "https://github.com/meowmeowahr/kevinbot-desktopclient/issues"
+Source = "https://github.com/meowmeowahr/kevinbot-desktopclient"
+
+[tool.hatch.version]
+path = "src/kevinbot_desktopclient/__about__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/kevinbot_desktopclient tests}"
+
+[tool.hatch.envs.hatch-test]
+dependencies = [
+  "coverage-enable-subprocess==1.0",
+  "coverage[toml]~=7.4",
+  "pytest~=8.1",
+  "pytest-qt"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001", "S101", "PLR2004"]
+
+[tool.coverage.run]
+source_pkgs = ["kevinbot_desktopclient", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/kevinbot_desktopclient/__about__.py",
+]
+
+[tool.coverage.paths]
+kevinbot_desktopclient = ["src/kevinbot_desktopclient", "*/kevinbot-desktopclient/src/kevinbot_desktopclient"]
+tests = ["tests", "*/kevinbot-desktopclient/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]

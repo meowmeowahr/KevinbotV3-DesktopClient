@@ -1,5 +1,5 @@
 import icmplib
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
@@ -65,9 +65,7 @@ class PingWidget(QWidget):
     def set_values(self, values):
         # Calculate color for ping
         ping_color = self.get_color_based_on_value(values.avg_rtt, thresholds=(50, 150))
-        jitter_color = self.get_color_based_on_value(
-            values.jitter, thresholds=(20, 100)
-        )
+        jitter_color = self.get_color_based_on_value(values.jitter, thresholds=(20, 100))
 
         # Set colored text for ping and jitter
         self.label.setText(
@@ -84,7 +82,6 @@ class PingWidget(QWidget):
         low, high = thresholds
         if value <= low:
             return "#2ecc71"  # Green
-        elif value <= high:
+        if value <= high:
             return "#f39c12"  # Yellow
-        else:
-            return "#e74c3c"  # Red
+        return "#e74c3c"  # Red

@@ -2,14 +2,13 @@
 Unit tests for plotting widgets
 """
 
-from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QResizeEvent
+import pytest
 
-from ui.plots import BatteryGraph
+from kevinbot_desktopclient.ui.plots import BatteryGraph
 
 
-def test_battery_graph(qtbot):
+@pytest.mark.usefixtures("qtbot")
+def test_battery_graph():
     widget = BatteryGraph()
     widget.set_voltage_range(0, 100)
     widget.add(50.2)

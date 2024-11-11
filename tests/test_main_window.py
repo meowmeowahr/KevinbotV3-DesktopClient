@@ -8,8 +8,9 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 
-def test_main_window(qtbot):
-    import kevinbot_desktopclient.main as main
+@pytest.mark.usefixtures("qtbot")
+def test_main_window():
+    from kevinbot_desktopclient import main
 
     app = QApplication.instance()
     if app:

@@ -67,6 +67,9 @@ dependencies = [
   "pytest-qt"
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001", "S101", "PLR2004"]
+
 [tool.coverage.run]
 source_pkgs = ["kevinbot_desktopclient", "tests"]
 branch = true

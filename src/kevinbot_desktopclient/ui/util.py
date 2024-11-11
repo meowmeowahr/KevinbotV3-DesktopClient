@@ -11,9 +11,7 @@ def rotate_icon(icon: QIcon, angle: float) -> QIcon:
     # Create a transformation for rotating
     transform = QTransform().rotate(angle)
     # Apply the transformation to the QPixmap
-    rotated_pixmap = pixmap.transformed(
-        transform, Qt.TransformationMode.SmoothTransformation
-    )
+    rotated_pixmap = pixmap.transformed(transform, Qt.TransformationMode.SmoothTransformation)
     # Convert back to QIcon
     return QIcon(rotated_pixmap)
 
@@ -27,12 +25,7 @@ def add_tabs(bar: QTabWidget, tabs: list[tuple[str, QIcon]]) -> list[QWidget]:
             widget,
             rotate_icon(
                 tab_options[1],
-                (
-                    90
-                    if bar.tabPosition()
-                    in [QTabWidget.TabPosition.West, QTabWidget.TabPosition.East]
-                    else 0
-                ),
+                (90 if bar.tabPosition() in [QTabWidget.TabPosition.West, QTabWidget.TabPosition.East] else 0),
             ),
             "",
         )
@@ -49,7 +42,16 @@ def initials(phrase):
 
 
 def rgb_to_hex(rgb):
-    return "%02x%02x%02x" % tuple(rgb)
+    """Converts an RGB color tuple to a hex color.
+
+    Args:
+        rgb: A tuple of R, G, and B.
+
+    Returns:
+        A string representing the hex color code.
+    """
+
+    return f"{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
 
 
 def change_url_port(url, new_port):
@@ -62,5 +64,4 @@ def change_url_port(url, new_port):
         netloc += f":{new_port}"
 
     # Rebuild the URL with the new port
-    updated_url = urlunparse(parsed_url._replace(netloc=netloc))
-    return updated_url
+    return urlunparse(parsed_url._replace(netloc=netloc))

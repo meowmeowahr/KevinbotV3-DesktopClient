@@ -5,27 +5,18 @@ import sys
 import threading
 import time
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import override
 
 import ansi2html
-import kevinbot_desktopclient.constants as constants
 import kevinbotlib
 import kevinbotlib.exceptions
 import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import shortuuid
-from kevinbot_desktopclient.components import (
-    ControllerManagerWidget,
-    PingWorker,
-    begin_controller_backend,
-    controllers,
-)
-from kevinbot_desktopclient.components.dataplot import LivePlot
-from kevinbot_desktopclient.components.ping import PingWidget
 from Custom_Widgets.QCustomModals import QCustomModals
-from kevinbot_desktopclient.enums import Cardinal
 from loguru import logger
 from PySide6.QtCore import (
     QBuffer,
@@ -69,6 +60,17 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from kevinbot_desktopclient import constants
+from kevinbot_desktopclient.components import (
+    ControllerManagerWidget,
+    PingWorker,
+    begin_controller_backend,
+    controllers,
+)
+from kevinbot_desktopclient.components.dataplot import LivePlot
+from kevinbot_desktopclient.components.ping import PingWidget
+from kevinbot_desktopclient.enums import Cardinal
 from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
 from kevinbot_desktopclient.ui.plots import BatteryGraph, PovVisual, StickVisual
 from kevinbot_desktopclient.ui.util import add_tabs
@@ -103,8 +105,8 @@ class StateManager:
     camera_address: str = "http://kevinbot.local"
     mqtt_host: str = "http://10.0.0.1/"
     mqtt_port: int = 1883
-    last_system_tick: float = time.time()
-    last_core_tick: float = time.time()
+    last_system_tick: float = field(default_factory=lambda: time.time())
+    last_core_tick: float = field(default_factory=lambda: time.time())
     left_power: float = 0.0
     right_power: float = 0.0
 
@@ -198,9 +200,7 @@ class MainWindow(QMainWindow):
         self.state.camera_address = self.settings.value(
             "comm/camera_address", "http://10.0.0.1:5000/video_feed", type=str
         )  # type: ignore
-        self.state.mqtt_host = self.settings.value(
-            "comm/host", "http://10.0.0.1/", type=str
-        )  # type: ignore
+        self.state.mqtt_host = self.settings.value("comm/host", "http://10.0.0.1/", type=str)  # type: ignore
         logger.info(f"Robot FPV MJPEG Host: {self.state.camera_address}")
 
         # Theme
@@ -259,9 +259,7 @@ class MainWindow(QMainWindow):
             controllers.map_pov(controller, self.controller_dpad_action)
 
         self.controller_manager.on_connected.connect(self.controller_connected_handler)
-        self.controller_manager.on_disconnected.connect(
-            self.controller_disconnected_handler
-        )
+        self.controller_manager.on_disconnected.connect(self.controller_disconnected_handler)
         self.controller_manager.on_refresh.connect(self.controller_refresh_handler)
 
         self.left_stick_update.connect(self.update_left_stick_visuals)
@@ -356,8 +354,7 @@ class MainWindow(QMainWindow):
         # * State Bar
         self.state_dock = QDockWidget("State")
         self.state_dock.setFeatures(
-            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
-            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures | QDockWidget.DockWidgetFeature.DockWidgetMovable
         )
         self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.state_dock)
 
@@ -508,9 +505,7 @@ class MainWindow(QMainWindow):
         self.plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
 
         self.state_label = QLabel("No Communications")
-        self.state_label.setFont(
-            QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold)
-        )
+        self.state_label.setFont(QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold))
         self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.state_layout.addWidget(self.state_label)
 
@@ -536,7 +531,7 @@ class MainWindow(QMainWindow):
             self.stick_visual_left,
             self.stick_visual_right,
             self.pov_visual,
-        ) = self.connection_layout(self.settings)
+        ) = self.connection_layout()
         self.connection_widget.setLayout(self.comm_layout)
         self.about_widget.setLayout(self.about_layout())
 
@@ -580,12 +575,8 @@ class MainWindow(QMainWindow):
         self.right_tabs.setIconSize(QSize(24, 24))
         self.splitter.addWidget(self.right_tabs)
 
-        self.right_tabs.addTab(
-            QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head"
-        )
-        self.right_tabs.addTab(
-            QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting"
-        )
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head")
+        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.eye"), "Eyes")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi.text-to-speech"), "Speech")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.cogs"), "System")
@@ -662,23 +653,17 @@ class MainWindow(QMainWindow):
                 type=str,  # type: ignore
             )
         )
-        camera_input.textChanged.connect(
-            lambda: self.set_camera_address(camera_input.text())
-        )
+        camera_input.textChanged.connect(lambda: self.set_camera_address(camera_input.text()))
         comm_layout.addWidget(camera_input)
 
-        mqtt_host_defails = QLabel(
-            "IP Address (preferred) or host of KevinbotLib MQTT Interface"
-        )
+        mqtt_host_defails = QLabel("IP Address (preferred) or host of KevinbotLib MQTT Interface")
         comm_layout.addWidget(mqtt_host_defails)
 
         mqtt_host_input = QLineEdit()
         mqtt_host_input.setText(
             self.settings.value("comm/host", "http://10.0.0.1/", type=str)  # type: ignore
         )
-        mqtt_host_input.textChanged.connect(
-            lambda: self.set_mqtt_host(mqtt_host_input.text())
-        )
+        mqtt_host_input.textChanged.connect(lambda: self.set_mqtt_host(mqtt_host_input.text()))
         comm_layout.addWidget(mqtt_host_input)
 
         # Logging
@@ -788,7 +773,7 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    def connection_layout(self, settings: QSettings):
+    def connection_layout(self):
         layout = QHBoxLayout()
 
         # Controller
@@ -852,23 +837,17 @@ class MainWindow(QMainWindow):
         icon_layout.addWidget(icon)
 
         name_text = QLabel("Kevinbot Desktop Client")
-        name_text.setStyleSheet(
-            "font-size: 30px; font-weight: bold; font-family: Roboto;"
-        )
+        name_text.setStyleSheet("font-size: 30px; font-weight: bold; font-family: Roboto;")
         name_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.addWidget(name_text)
 
         version = QLabel(f"Version {__version__}")
-        version.setStyleSheet(
-            "font-size: 24px; font-weight: semibold; font-family: Roboto;"
-        )
+        version.setStyleSheet("font-size: 24px; font-weight: semibold; font-family: Roboto;")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.addWidget(version)
 
         qt_version = QLabel("Qt Version: " + qVersion())
-        qt_version.setStyleSheet(
-            "font-size: 22px; font-weight: normal; font-family: Roboto;"
-        )
+        qt_version.setStyleSheet("font-size: 22px; font-weight: normal; font-family: Roboto;")
         qt_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.addWidget(qt_version)
 
@@ -879,7 +858,7 @@ class MainWindow(QMainWindow):
         # Authors
         authors_scroll = QScrollArea()
         authors_scroll.setWidgetResizable(True)
-        tabs.addTab(authors_scroll, "Authors", qta.icon("mdi6.account-multiple"))
+        tabs.add_tab(authors_scroll, "Authors", qta.icon("mdi6.account-multiple"))
 
         authors_widget = QWidget()
         authors_scroll.setWidget(authors_widget)
@@ -900,7 +879,7 @@ class MainWindow(QMainWindow):
         licenses_tabs = QTabWidget()
         licenses_tabs.setContentsMargins(100, 100, 100, 100)
 
-        for license in [
+        for component_license in [
             ("Desktop Client", "LICENSE"),
             ("Roboto Font", "assets/fonts/Roboto/LICENSE.txt"),
             ("JetBrains Mono Font", "assets/fonts/JetBrains_Mono/OFL.txt"),
@@ -908,23 +887,21 @@ class MainWindow(QMainWindow):
             license_viewer = QTextEdit()
             license_viewer.setReadOnly(True)
             try:
-                with open(license[1]) as file:
+                with open(component_license[1]) as file:
                     license_viewer.setText(file.read())
             except FileNotFoundError:
                 buffer = QBuffer()
                 buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-                qta.icon("mdi6.alert", color="#f44336").pixmap(QSize(64, 64)).save(
-                    buffer, "PNG"
-                )
+                qta.icon("mdi6.alert", color="#f44336").pixmap(QSize(64, 64)).save(buffer, "PNG")
                 encoded = buffer.data().toBase64().toStdString()
                 license_viewer.setText(
                     f'<img src="data:image/png;base64, {encoded}" alt="Red dot"/><br>'
-                    f"License file '{license[1]}' not found.<br>There was an error locating the license file. "
+                    f"License file '{component_license[1]}' not found.<br>There was an error locating the license file. "
                     "A copy of it should be included in the source and binary distributions."
                 )
-            licenses_tabs.addTab(license_viewer, license[0])
+            licenses_tabs.addTab(license_viewer, component_license[0])
 
-        tabs.addTab(licenses_tabs, "License", qta.icon("mdi6.gavel"))
+        tabs.add_tab(licenses_tabs, "License", qta.icon("mdi6.gavel"))
 
         aboutqt = QToolButton()
         aboutqt.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
@@ -948,7 +925,7 @@ class MainWindow(QMainWindow):
         self.state.app_state = AppState.ESTOPPED
         self.state_label.setText("Emergency Stopped")
 
-    def request_enable(self, enable: bool):
+    def request_enable(self, enable: bool):  # noqa: FBT001
         """Attempt to enable or disable the robot.
 
         Args:
@@ -974,8 +951,7 @@ class MainWindow(QMainWindow):
         for _ in range(self.dc_log_queue.qsize()):
             log_area.append(
                 self.log_converter.convert(
-                    "\033[91mDESKTOP CLIENT >>>\033[0m "
-                    + self.dc_log_queue.get().strip()
+                    "\033[91mDESKTOP CLIENT >>>\033[0m " + self.dc_log_queue.get().strip()
                 ).replace(
                     "display: inline; white-space: pre-wrap; word-wrap: break-word;",  # ? Is there a better way to do this?
                     "display: inline; white-space: pre-wrap; word-wrap: break-word; font-family: JetBrains Mono;",
@@ -999,7 +975,7 @@ class MainWindow(QMainWindow):
 
     # Connection
     def pulse_state_label(self):
-        if self.state_label_timer_runs == 5:
+        if self.state_label_timer_runs == constants.STATE_LABEL_PULSE_COUNT:
             self.state_label_timer_runs = 0
             self.state_label_timer.stop()
             self.state_label.setStyleSheet("")
@@ -1011,7 +987,7 @@ class MainWindow(QMainWindow):
         self.state_label_timer_runs += 1
 
     # * Drive
-    def drivecmd(self, controller: pyglet.input.Controller, xvalue, yvalue):
+    def drivecmd(self, controller: pyglet.input.Controller, _xvalue, _yvalue):
         if self.state.app_state in [
             AppState.ESTOPPED,
             AppState.NO_COMMUNICATIONS,
@@ -1022,28 +998,19 @@ class MainWindow(QMainWindow):
 
         if controller == self.controller_manager.get_controllers()[0]:
 
-            def apply_scaled_deadband(val, invert: bool = True):
+            def apply_scaled_deadband(val, *, invert: bool = True):
                 if abs(val) < constants.CONTROLLER_DEADBAND:
                     return 0
                 val = (
-                    val
-                    * (
-                        (1 + constants.CONTROLLER_DEADBAND)
-                        if val > 0
-                        else (1 + constants.CONTROLLER_DEADBAND)
-                    )
-                ) + (
-                    -constants.CONTROLLER_DEADBAND
-                    if val > 0
-                    else constants.CONTROLLER_DEADBAND
-                )
+                    val * ((1 + constants.CONTROLLER_DEADBAND) if val > 0 else (1 + constants.CONTROLLER_DEADBAND))
+                ) + (-constants.CONTROLLER_DEADBAND if val > 0 else constants.CONTROLLER_DEADBAND)
                 return -val if invert else val
 
             left_power = max(-1, min(1, apply_scaled_deadband(controller.lefty)))
             right_power = max(-1, min(1, apply_scaled_deadband(controller.righty)))
-            if round(left_power, 2) == round(self.state.left_power, 2) and round(
-                right_power, 2
-            ) == round(self.state.right_power, 2):
+            if round(left_power, 2) == round(self.state.left_power, 2) and round(right_power, 2) == round(
+                self.state.right_power, 2
+            ):
                 return
             self.state.left_power = left_power
             self.state.right_power = right_power
@@ -1064,9 +1031,7 @@ class MainWindow(QMainWindow):
             self.state.app_state = AppState.DISCONNECTING
 
         # Create a worker instance
-        worker = ConnectionWorker(
-            self.robot, self.settings, self.state, self.state_label, self.connect_button
-        )
+        worker = ConnectionWorker(self.robot, self.settings, self.state, self.state_label, self.connect_button)
         worker.signals.connection_status.connect(self.state_label.setText)
         worker.signals.robot_connected.connect(self.on_connect)
         worker.signals.connection_error.connect(self.on_connect_error)
@@ -1092,7 +1057,7 @@ class MainWindow(QMainWindow):
         self.connect_button.setText("Disconnect")
         self.connect_button.setEnabled(True)
 
-    def on_connect_error(self, exception: Exception, summary: traceback.FrameSummary):
+    def on_connect_error(self, _exception: Exception, summary: traceback.FrameSummary):
         self.connect_button.setEnabled(True)
         self.state.app_state = AppState.NO_COMMUNICATIONS
         self.state_label.setText("No Communications")
@@ -1103,7 +1068,7 @@ class MainWindow(QMainWindow):
         msg.showMessage(f"{str(summary).replace('\n', '<br>')}")
 
     # * Robot state
-    def update_states(self, topics: list[str], value: str):
+    def update_states(self, _topics: list[str], _value: str):
         if self.state.app_state != AppState.CONNECTED:
             return
 
@@ -1139,15 +1104,11 @@ class MainWindow(QMainWindow):
             position="top-right",
             description="Controller has been connected",
             isClosable=True,
-            modalIcon=qta.icon("mdi6.information", color="#0f0f0f").pixmap(
-                QSize(32, 32)
-            ),
+            modalIcon=qta.icon("mdi6.information", color="#0f0f0f").pixmap(QSize(32, 32)),
             closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
             duration=3000,
         )
-        modal.setStyleSheet(
-            "* { border: none; background-color: #b3e5fc; color: #0f0f0f; }"
-        )
+        modal.setStyleSheet("* { border: none; background-color: #b3e5fc; color: #0f0f0f; }")
         modal.setParent(self)
         modal.show()
 
@@ -1165,15 +1126,11 @@ class MainWindow(QMainWindow):
             position="top-right",
             description="Controller has disconnected",
             isClosable=True,
-            modalIcon=qta.icon("mdi6.alert-decagram", color="#0f0f0f").pixmap(
-                QSize(32, 32)
-            ),
+            modalIcon=qta.icon("mdi6.alert-decagram", color="#0f0f0f").pixmap(QSize(32, 32)),
             closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
             duration=3000,
         )
-        modal.setStyleSheet(
-            "* { border: none; background-color: #ffecb3; color: #0f0f0f; }"
-        )
+        modal.setStyleSheet("* { border: none; background-color: #ffecb3; color: #0f0f0f; }")
         modal.setParent(self)
         modal.show()
 
@@ -1184,31 +1141,23 @@ class MainWindow(QMainWindow):
         xvalue: float,
         yvalue: float,
     ):
-        if (
-            controller == self.controller_manager.get_controllers()[0]
-            and stick == "leftstick"
-        ):
+        if controller == self.controller_manager.get_controllers()[0] and stick == "leftstick":
             self.left_stick_update.emit(controller, xvalue, yvalue)
-        elif (
-            controller == self.controller_manager.get_controllers()[0]
-            and stick == "rightstick"
-        ):
+        elif controller == self.controller_manager.get_controllers()[0] and stick == "rightstick":
             self.right_stick_update.emit(controller, xvalue, yvalue)
 
     def controller_dpad_action(
         self,
         controller: pyglet.input.Controller,
-        left: bool,
-        down: bool,
-        right: bool,
-        up: bool,
+        left: bool,  # noqa: FBT001
+        down: bool,  # noqa: FBT001
+        right: bool,  # noqa: FBT001
+        up: bool,  # noqa: FBT001
     ):
         if controller == self.controller_manager.get_controllers()[0]:
             self.pov_update.emit(controller, left, down, right, up)
 
-    def update_left_stick_visuals(
-        self, controller: pyglet.input.Controller, xvalue: float, yvalue: float
-    ):
+    def update_left_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
         if controller != self.controller_manager.get_controllers()[0]:
             return
 
@@ -1218,9 +1167,7 @@ class MainWindow(QMainWindow):
                 yvalue,
             )
 
-    def update_right_stick_visuals(
-        self, controller: pyglet.input.Controller, xvalue: float, yvalue: float
-    ):
+    def update_right_stick_visuals(self, controller: pyglet.input.Controller, xvalue: float, yvalue: float):
         if controller != self.controller_manager.get_controllers()[0]:
             return
 
@@ -1233,10 +1180,10 @@ class MainWindow(QMainWindow):
     def update_dpad_visuals(
         self,
         controller: pyglet.input.Controller,
-        dpleft: bool,
-        dpright: bool,
-        dpup: bool,
-        dpdown: bool,
+        dpleft: bool,  # noqa: FBT001
+        dpright: bool,  # noqa: FBT001
+        dpup: bool,  # noqa: FBT001
+        dpdown: bool,  # noqa: FBT001
     ):
         if controller != self.controller_manager.get_controllers()[0]:
             return
@@ -1252,16 +1199,14 @@ class MainWindow(QMainWindow):
                 (True, False, False, False): Cardinal.WEST,
                 (False, True, False, False): Cardinal.EAST,
             }
-            cardinal = direction_map.get(
-                (dpleft, dpright, dpup, dpdown), Cardinal.CENTER
-            )
+            cardinal = direction_map.get((dpleft, dpright, dpup, dpdown), Cardinal.CENTER)
 
             self.pov_visual.plot(cardinal)
 
     def set_theme(self, theme: str):
         self.settings.setValue("window/theme", theme)
 
-    def set_xcb(self, xcb: bool):
+    def set_xcb(self, xcb: bool):  # noqa: FBT001
         self.settings.setValue("platform/force_xcb", xcb)
 
     def set_camera_address(self, host: str):
@@ -1274,6 +1219,7 @@ class MainWindow(QMainWindow):
         self.ping_worker.target = host
         self.state.mqtt_host = host
 
+    @override
     def closeEvent(self, event: QCloseEvent) -> None:
         self.setDisabled(True)
         self.robot.callback = None  # prevent attempting to update deleted Qt widgets
@@ -1334,17 +1280,14 @@ def main(app: QApplication | None = None):
     )
 
     if not app:
-        if platform.system() == "Linux":
-            if settings.value("platform/force_xcb", False, type=bool):
-                os.environ["QT_QPA_PLATFORM"] = "xcb"
-                logger.debug("Forcing XCB Qt Platform")
+        if platform.system() == "Linux" and settings.value("platform/force_xcb", False, type=bool):
+            os.environ["QT_QPA_PLATFORM"] = "xcb"
+            logger.debug("Forcing XCB Qt Platform")
         app = QApplication(sys.argv)
         app.setApplicationVersion(__version__)
         app.setWindowIcon(QIcon("assets/icons/icon.svg"))
         app.setApplicationName("Kevinbot Desktop Client")
-        app.setStyle(
-            "Fusion"
-        )  # helps avoid problems in the future, make sure everyone is usign the same base
+        app.setStyle("Fusion")  # helps avoid problems in the future, make sure everyone is usign the same base
 
     parse(app)
 
@@ -1360,9 +1303,7 @@ def main(app: QApplication | None = None):
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Regular.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Medium.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Bold.ttf")
-    QFontDatabase.addApplicationFont(
-        "assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf"
-    )
+    QFontDatabase.addApplicationFont("assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf")
 
     MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")

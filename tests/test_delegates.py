@@ -6,6 +6,7 @@ import pytest
 from PySide6.QtCore import QModelIndex
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QStyle, QStyleOptionViewItem, QTreeView
+
 from kevinbot_desktopclient.ui.delegates import NoFocusDelegate
 
 

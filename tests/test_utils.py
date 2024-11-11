@@ -2,12 +2,15 @@
 Unit tests for UI utils
 """
 
+import pytest
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QTabWidget
+
 from kevinbot_desktopclient.ui.util import add_tabs, change_url_port, initials, rgb_to_hex, rotate_icon
 
 
-def test_tab_generator(qtbot):
+@pytest.mark.usefixtures("qtbot")
+def test_tab_generator():
     tabs = [
         ("Test1", QIcon()),
         ("Test2", QIcon()),
@@ -19,10 +22,12 @@ def test_tab_generator(qtbot):
     assert tabbar.count() == 2
 
 
-def test_icon_rotate(qtbot):
+@pytest.mark.usefixtures("qtbot")
+def test_icon_rotate():
     icon = QIcon()
 
-    assert rotate_icon(icon, 90).isNull() and rotate_icon(icon, -90).isNull()
+    assert rotate_icon(icon, 90).isNull()
+    assert rotate_icon(icon, -90).isNull()
 
 
 def test_initials():

@@ -4,6 +4,7 @@ PySide6 MJPEG Stream Viewer and Widget
 
 import textwrap
 from io import BytesIO
+from typing import override
 
 import requests
 import urllib3
@@ -14,9 +15,7 @@ from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 
-def create_image_with_text(
-    text1, text2, image_size=(400, 400), font_path=None, wrap_width=60
-):
+def create_image_with_text(text1, text2, image_size=(400, 400), wrap_width=60):
     # Create a blank image with white background
     image = Image.new("RGB", image_size, "white")
     draw = ImageDraw.Draw(image)
@@ -93,9 +92,7 @@ class MJPEGStreamThread(QThread):
                 ),
             )
             img = img.convert("RGB")
-            qimg = QImage(
-                img.tobytes(), img.width, img.height, QImage.Format.Format_RGB888
-            )
+            qimg = QImage(img.tobytes(), img.width, img.height, QImage.Format.Format_RGB888)
             self.frame_received.emit(qimg)
 
 
@@ -139,10 +136,13 @@ class MJPEGViewer(QWidget):
             )
             self.label.setPixmap(scaled_pixmap)
 
+    @override
     def resizeEvent(self, event):
         # Reapply scaling when the window is resized
         self.apply_scaling()
+        event.accept()
 
+    @override
     def closeEvent(self, event):
         self.mjpeg_thread.terminate()
         event.accept()

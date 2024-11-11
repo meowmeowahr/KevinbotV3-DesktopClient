@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from kevinbot_desktopclient.ui.widgets import ColorBlock
 
 
@@ -189,9 +190,7 @@ class LivePlot(QMainWindow):
         if was_active:
             self.timer.start()
 
-    def add_data_source(
-        self, name: str, func: Callable[[float], float], color: str = "w"
-    ) -> None:
+    def add_data_source(self, name: str, func: Callable[[float], float], color: str = "w") -> None:
         """
         Add a new data source to the plot.
 
@@ -201,7 +200,8 @@ class LivePlot(QMainWindow):
             color: The color to use for plotting (default: white)
         """
         if name in self.data_sources:
-            raise ValueError(f"Data source '{name}' already exists")
+            msg = f"Data source '{name}' already exists"
+            raise ValueError(msg)
 
         # Add the source function
         self.data_sources[name] = func
@@ -223,7 +223,8 @@ class LivePlot(QMainWindow):
             name: The name of the data source to remove
         """
         if name not in self.data_sources:
-            raise ValueError(f"Data source '{name}' does not exist")
+            msg = f"Data source '{name}' does not exist"
+            raise ValueError(msg)
 
         # Remove the checkbox
         self.source_checkboxes[name].deleteLater()
@@ -250,9 +251,7 @@ class LivePlot(QMainWindow):
 
             # Update the plot data item, but set visibility based on selection
             self.plot_data_items[name].setData(self.data_x, self.data_y[name])
-            self.plot_data_items[name].setVisible(
-                self.source_checkboxes[name].isChecked()
-            )
+            self.plot_data_items[name].setVisible(self.source_checkboxes[name].isChecked())
 
         self.plot_x += 0.1  # Increment x-value by 0.1
 
@@ -265,14 +264,12 @@ if __name__ == "__main__":
     window.add_data_source("sin", math.sin, "c")  # Cyan for sine wave
     window.add_data_source("cos", math.cos, "r")  # Red for cosine wave
     window.add_data_source("tan", math.tan, "m")  # Magenta for tangent wave
+    window.add_data_source("exp", lambda x: math.exp(x), "b")  # Blue for exponential data
+    window.add_data_source("sqrt", lambda x: math.sqrt(x), "y")  # Yellow for square root data
     window.add_data_source(
-        "exp", lambda x: math.exp(x), "b"
-    )  # Blue for exponential data
-    window.add_data_source(
-        "sqrt", lambda x: math.sqrt(x), "y"
-    )  # Yellow for square root data
-    window.add_data_source(
-        "rand", lambda x: random.randint(-100, 100) / 100, "g"
+        "rand",
+        lambda _: random.randint(-100, 100) / 100,  # noqa: S311
+        "g",
     )  # Green for random data
 
     window.show()

@@ -19,9 +19,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from kevinbot_desktopclient.ui.delegates import NoFocusDelegate
 
-from .uuid_manager import UuidManager
+from kevinbot_desktopclient.components.uuid_manager import UuidManager
+from kevinbot_desktopclient.ui.delegates import NoFocusDelegate
 
 
 def begin_controller_backend():  # pragma: no cover
@@ -57,9 +57,7 @@ def map_stick(controller: pyglet.input.Controller, action: typing.Callable):
     """
     previous_mapping = controller.on_stick_motion
 
-    def handler(
-        controller: pyglet.input.Controller, stick: str, xvalue: float, yvalue: float
-    ):
+    def handler(controller: pyglet.input.Controller, stick: str, xvalue: float, yvalue: float):
         previous_mapping(controller, stick, xvalue, yvalue)
         action(controller, stick, xvalue, yvalue)
 
@@ -77,10 +75,10 @@ def map_pov(controller: pyglet.input.Controller, action: typing.Callable):
 
     def handler(
         controller: pyglet.input.Controller,
-        dpleft: bool,
-        dpright: bool,
-        dpup: bool,
-        dpdown: bool,
+        dpleft: bool,  # noqa: FBT001
+        dpright: bool,  # noqa: FBT001
+        dpup: bool,  # noqa: FBT001
+        dpdown: bool,  # noqa: FBT001
     ):
         previous_mapping(controller, dpleft, dpright, dpup, dpdown)
         action(controller, dpleft, dpright, dpup, dpdown)
@@ -102,9 +100,7 @@ class ControllerManagerWidget(QWidget):
         self._controller_manager = pyglet.input.ControllerManager()
         self._controller_manager.on_disconnect = self.controller_disconnect
         self._controller_manager.on_connect = self.controller_reconnect
-        self.controllers: list[pyglet.input.Controller] = (
-            self._controller_manager.get_controllers()
-        )
+        self.controllers: list[pyglet.input.Controller] = self._controller_manager.get_controllers()
         self.controller_store = UuidManager()
 
         # Layout
@@ -138,17 +134,13 @@ class ControllerManagerWidget(QWidget):
 
         self.connected_list.clear()
         self.controller_store.clear()
-        self.controllers: list[pyglet.input.Controller] = (
-            self._controller_manager.get_controllers()
-        )
+        self.controllers: list[pyglet.input.Controller] = self._controller_manager.get_controllers()
         for controller in self.controllers:
             self.controller_store.add_item(controller)
             item = QListWidgetItem(controller.name)
             item.setToolTip(f"{controller.name}; GUID: {controller.guid}")
             item.setFont(QFont(self.font().families(), 11))
-            item.setData(
-                Qt.ItemDataRole.UserRole, self.controller_store.get_uuid(controller)
-            )
+            item.setData(Qt.ItemDataRole.UserRole, self.controller_store.get_uuid(controller))
             if not controller.device.is_open:
                 controller.open()
             controller.rumble_play_weak(1, 0.1)
@@ -158,18 +150,14 @@ class ControllerManagerWidget(QWidget):
             self.connected_list.addItem(item)
         self.on_refresh.emit(self.controller_store.get_items())
 
-    def controller_press(self, controller: pyglet.input.Controller, button: str):
+    def controller_press(self, controller: pyglet.input.Controller, _button: str):
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
-            if controller == self.controller_store.get_item(
-                item.data(Qt.ItemDataRole.UserRole)
-            ):
+            if controller == self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)):
                 item.setBackground(QColor(QRgba64().fromRgba(76, 175, 80, 127)))
 
-    def controller_release(self, controller: pyglet.input.Controller, button: str):
+    def controller_release(self, controller: pyglet.input.Controller, _button: str):
         for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
-            if controller == self.controller_store.get_item(
-                item.data(Qt.ItemDataRole.UserRole)
-            ):
+            if controller == self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole)):
                 item.setBackground(Qt.GlobalColor.transparent)
 
     def controller_stick_motion(
@@ -193,10 +181,10 @@ class ControllerManagerWidget(QWidget):
         return controller
 
     def get_controller_ids(self) -> list[uuid.UUID]:
-        ids = []
-        for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
-            ids.append(item.data(Qt.ItemDataRole.UserRole))
-        return ids
+        return [
+            item.data(Qt.ItemDataRole.UserRole)
+            for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard)
+        ]
 
     def get_controllers(self) -> list[pyglet.input.Controller | None]:
         """
@@ -204,10 +192,11 @@ class ControllerManagerWidget(QWidget):
         :return: pyglet Controllers
         """
         ids = []
-        for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard):
-            ids.append(
-                self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole))
-            )
+        ids = [
+            self.controller_store.get_item(item.data(Qt.ItemDataRole.UserRole))
+            for item in self.connected_list.findItems("*", Qt.MatchFlag.MatchWildcard)
+        ]
+
         return ids + [None] * max(0, self.slots - len(ids))
 
 
@@ -221,19 +210,19 @@ if __name__ == "__main__":  # pragma: no cover
             self.setLayout(self.vlayout)
 
             self.manager = ControllerManagerWidget()
-            self.manager.on_connected.connect(lambda x: print("Connect", x))
-            self.manager.on_disconnected.connect(lambda x: print("Disconnect", x))
+            self.manager.on_connected.connect(lambda x: print("Connect", x))  # noqa: T201
+            self.manager.on_disconnected.connect(lambda x: print("Disconnect", x))  # noqa: T201
             self.vlayout.addWidget(self.manager)
 
             self.uuid_button = QPushButton("Get UUIDs")
             self.uuid_button.clicked.connect(
-                lambda: print(self.manager.get_controller_ids())
+                lambda: print(self.manager.get_controller_ids())  # noqa: T201
             )
             self.vlayout.addWidget(self.uuid_button)
 
             self.con_button = QPushButton("Get Controllers")
             self.con_button.clicked.connect(
-                lambda: print(self.manager.get_controllers())
+                lambda: print(self.manager.get_controllers())  # noqa: T201
             )
             self.vlayout.addWidget(self.con_button)
 
@@ -248,11 +237,11 @@ if __name__ == "__main__":  # pragma: no cover
             if c:
                 map_press(c, self.press)
             else:
-                print("List empty")
+                print("List empty")  # noqa: T201
 
         @staticmethod
         def press(controller, button):
-            print("press", controller, button)
+            print("press", controller, button)  # noqa: T201
 
     app = QApplication(sys.argv)
     window = ExampleWindow()

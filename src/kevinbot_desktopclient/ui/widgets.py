@@ -1,6 +1,7 @@
 import hashlib
 from enum import Enum
 from functools import partial
+from typing import override
 
 import qtawesome as qta
 from PySide6.QtCore import QSize, Qt, QUrl, Signal
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from kevinbot_desktopclient.ui.util import initials as str2initials
 from kevinbot_desktopclient.ui.util import rgb_to_hex as _rgb2hex
 
@@ -24,8 +26,8 @@ class Severity(Enum):
 
 
 class WarningBar(QFrame):
-    def __init__(self, text="", closeable=False, severity=Severity.WARN) -> None:
-        super(WarningBar, self).__init__()
+    def __init__(self, text="", *, closeable=False, severity=Severity.WARN) -> None:
+        super().__init__()
 
         self.closeable: bool = closeable
 
@@ -42,14 +44,13 @@ class WarningBar(QFrame):
         self._text = QLabel(text)
         # self.__text.setStyleSheet("font-weight: bold;")
         self._text.setObjectName("warning_bar_text")
-        self._text.setProperty(
-            "severity", "warn" if severity == Severity.WARN else "severe"
-        )
+        self._text.setProperty("severity", "warn" if severity == Severity.WARN else "severe")
         self._text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._layout.addWidget(self._text)
 
         self.setFixedHeight(self.minimumSizeHint().height())
 
+    @override
     def mousePressEvent(self, event: QMouseEvent):
         if self.closeable:
             self.setVisible(False)
@@ -65,7 +66,7 @@ class CustomTabWidget(QWidget):
     on_tab_changed = Signal(int)
 
     def __init__(self, parent=None):
-        super(CustomTabWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._icon_size = QSize(36, 36)
 
@@ -81,19 +82,15 @@ class CustomTabWidget(QWidget):
         self.root_layout.addWidget(self.tab_stack)
         self.setLayout(self.root_layout)
 
-    def addTab(self, widget, title, icon=None):
+    def add_tab(self, widget, title, icon=None):
         self.tab_stack.addWidget(widget)
         button = QToolButton()
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         button.setCheckable(True)
         button.setAutoExclusive(True)
         button.setIconSize(self._icon_size)
-        button.clicked.connect(
-            partial(self.tab_stack.setCurrentIndex, self.tab_stack.count() - 1)
-        )
-        button.clicked.connect(
-            lambda: self.on_tab_changed.emit(self.tab_stack.count() - 1)
-        )
+        button.clicked.connect(partial(self.tab_stack.setCurrentIndex, self.tab_stack.count() - 1))
+        button.clicked.connect(lambda: self.on_tab_changed.emit(self.tab_stack.count() - 1))
 
         if icon is not None:
             button.setIcon(icon)
@@ -131,7 +128,7 @@ class Profile(QLabel):
 
     def generate_stylesheet(self):
         # Create a hash from the initials
-        hash_object = hashlib.md5(self.initials.encode())
+        hash_object = hashlib.md5(self.initials.encode())  # noqa: S324
         hex_digest = hash_object.hexdigest()
 
         # Use the first 6 characters of the hash as color components
@@ -148,7 +145,7 @@ class Profile(QLabel):
         color2 = f"rgb({r2}, {g2}, {b2})"
 
         # Define the stylesheet with a circular gradient
-        stylesheet = f"""
+        return f"""
         QLabel {{
             background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
                                          stop: 0 {color1}, stop: 1 {color2});
@@ -159,8 +156,8 @@ class Profile(QLabel):
             text-align: center;
         }}
         """
-        return stylesheet
 
+    @override
     def resizeEvent(self, event: QResizeEvent) -> None:
         self.setStyleSheet(self.generate_stylesheet())
         return super().resizeEvent(event)
@@ -202,17 +199,13 @@ class AuthorWidget(QFrame):
         self.author_site_button = QToolButton()
         self.author_site_button.setIcon(qta.icon("mdi6.web"))
         self.author_site_button.setIconSize(QSize(32, 32))
-        self.author_site_button.clicked.connect(
-            self.open_website, type=Qt.ConnectionType.UniqueConnection
-        )
+        self.author_site_button.clicked.connect(self.open_website, type=Qt.ConnectionType.UniqueConnection)
         self._layout.addWidget(self.author_site_button)
 
         self._author_email_button = QToolButton()
         self._author_email_button.setIcon(qta.icon("mdi6.email"))
         self._author_email_button.setIconSize(QSize(32, 32))
-        self._author_email_button.clicked.connect(
-            self.open_email, type=Qt.ConnectionType.UniqueConnection
-        )
+        self._author_email_button.clicked.connect(self.open_email, type=Qt.ConnectionType.UniqueConnection)
         self._layout.addWidget(self._author_email_button)
 
         self.setMaximumHeight(self.minimumSizeHint().height())
@@ -267,7 +260,7 @@ class ColorBlock(QFrame):
     """
 
     def __init__(self) -> None:
-        super(ColorBlock, self).__init__()
+        super().__init__()
 
         self.setFrameShape(QFrame.Shape.Box)
         self.setMinimumWidth(24)

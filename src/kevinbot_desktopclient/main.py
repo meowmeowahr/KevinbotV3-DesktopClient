@@ -310,7 +310,7 @@ class MainWindow(QMainWindow):
 
         tabs: list[tuple[str, QIcon]] = [
             ("Main", QIcon("assets/icons/icon.svg")),
-            ("Connections", qta.icon("mdi6.transit-connection-variant")),
+            ("Controllers", qta.icon("mdi6.controller")),
             ("Debug", qta.icon("mdi6.bug")),
             ("Settings", qta.icon("mdi6.cog")),
             ("About", qta.icon("mdi6.information-slab-circle")),

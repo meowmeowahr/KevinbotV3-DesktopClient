@@ -18,7 +18,7 @@ def rotate_icon(icon: QIcon, angle: float) -> QIcon:
 
 def add_tabs(bar: QTabWidget, tabs: list[tuple[str, QIcon]]) -> list[QWidget]:
     widgets = []
-    for tab_options in tabs:
+    for index, tab_options in enumerate(tabs):
         widget = QWidget()
         widgets.append(widget)
         bar.addTab(
@@ -29,6 +29,7 @@ def add_tabs(bar: QTabWidget, tabs: list[tuple[str, QIcon]]) -> list[QWidget]:
             ),
             "",
         )
+        bar.setTabToolTip(index, tab_options[0])
 
     return widgets
 

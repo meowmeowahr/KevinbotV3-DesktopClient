@@ -336,6 +336,17 @@ class LivePlot(QMainWindow):
         self.data_sources[name]["width"] = width
         self.plot_data_items[name].setPen(pg.mkPen(self.data_sources[name]["color"], width=width))
 
+    def edit_enabled(self, name: str, enabled: bool):
+        """
+        Edit the enabled state of a data source.
+
+        Args:
+            name: The name of the data source
+            enabled: The new enabled state
+        """
+        self.data_sources[name]["enabled"] = enabled
+        self.source_checkboxes[name].setChecked(enabled)
+
 
     def remove_data_source(self, name: str) -> None:
         """

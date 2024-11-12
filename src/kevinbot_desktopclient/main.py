@@ -615,11 +615,13 @@ class MainWindow(QMainWindow):
         self.save_plot_settings()
 
     def save_plot_settings(self):
-        data: list[dict] = []
+        data: list[list[dict]] = []
         for plot in self.plots:
+            plot_data = []
             for key, value in plot.get_data_sources().items():
-                data.append({"name": key, "color": value["color"], "width": value["width"], "enabled": value["enabled"]})
-        self.settings.setValue("plot/settings", json.dumps(data))
+                plot_data.append({"name": key, "color": value["color"], "width": value["width"], "enabled": value["enabled"]})
+            data.append(plot_data)
+        self.settings.setValue("plot/settings", json.dumps({"plots": data}))
 
     def add_plot(self, title="Plot"):
         dock = QDockWidget("Plot")
@@ -668,6 +670,18 @@ class MainWindow(QMainWindow):
 
         plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
         plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
+
+
+        try:
+            settings: list = json.loads(self.settings.value("plot/settings", type=str))["plots"] # type: ignore
+            if len(settings) >= len(self.plots):
+                for item in settings[len(self.plots) - 1]:
+                    if item["name"] in plot.get_data_sources():
+                        plot.edit_pen_color(item["name"], item["color"])
+                        plot.edit_pen_width(item["name"], item["width"])
+                        plot.edit_enabled(item["name"], item["enabled"])
+        except (ValueError, IndexError) as e:
+            logger.error(f"Failed to load plot settings, selecting defaults, {repr(e)}")
 
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()

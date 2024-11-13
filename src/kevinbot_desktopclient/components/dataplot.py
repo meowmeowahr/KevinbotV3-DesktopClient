@@ -48,6 +48,8 @@ def color_string_to_hex(color_str):
 
 
 class DataSourceCheckBox(QFrame):
+    selectionChanged = Signal()
+
     def __init__(self, source_name: str, color: str) -> None:
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -57,25 +59,62 @@ class DataSourceCheckBox(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-        self.check = QCheckBox()
-        layout.addWidget(self.check)
+        # Checkbox 1
+        self.check1 = QCheckBox()
+        self.check1.setFixedSize(QSize(18, 18))
+        layout.addWidget(self.check1)
+        
+        # Checkbox 2
+        self.check2 = QCheckBox(source_name)
+        layout.addWidget(self.check2)
 
-        self.clicked: SignalInstance = self.check.clicked
-        self.stateChanged = self.check.stateChanged
-        self.setChecked = self.check.setChecked
-        self.isChecked = self.check.isChecked
-
-        self.label = QLabel(source_name)
-        layout.addWidget(self.label)
-
+        # Color block
         self.color = ColorBlock()
         self.color.setMinimumSize(QSize(10, 10))
         self.color.setMaximumWidth(10)
         self.color.set_color(color_string_to_hex(color))
         layout.addWidget(self.color)
 
+        # Connect signals to enforce mutual exclusivity
+        self.check1.clicked.connect(lambda: self.on_checkbox_clicked(0))
+        self.check2.clicked.connect(lambda: self.on_checkbox_clicked(1))
+
+    def on_checkbox_clicked(self, checkbox_number: int):
+        if checkbox_number == 0:
+            if self.check1.isChecked():
+                self.check2.setChecked(False)
+            else:
+                self.check1.setChecked(False)
+        elif checkbox_number == 1:
+            if self.check2.isChecked():
+                self.check1.setChecked(False)
+            else:
+                self.check2.setChecked(False)
+        
+        # Emit signal indicating a change
+        self.selectionChanged.emit()
+
     def set_color(self, color: str):
         self.color.set_color(color_string_to_hex(color))
+
+    def is_checked(self, checkbox_number: int) -> bool:
+        """Check if a specific checkbox is checked."""
+        if checkbox_number == 0:
+            return self.check1.isChecked()
+        elif checkbox_number == 1:
+            return self.check2.isChecked()
+        return False
+
+    def set_checked(self, checkbox_number: int, checked: bool) -> None:
+        """Set a specific checkbox to be checked or unchecked, enforcing exclusivity."""
+        if checkbox_number == 0:
+            self.check1.setChecked(checked)
+            if checked:
+                self.check2.setChecked(False)
+        elif checkbox_number == 1:
+            self.check2.setChecked(checked)
+            if checked:
+                self.check1.setChecked(False)
 
 
 class DataSourceManagerItem(QFrame):
@@ -236,10 +275,12 @@ class LivePlot(QMainWindow):
 
         # Set plot ranges and labels
         self.plot_widget.setLabel("left", "Value")
+        self.plot_widget.setLabel("right", "Value")
         self.plot_widget.setLabel("bottom", "Time", units="s")
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.showGrid(x=True, y=True)
-        pg.setConfigOptions(antialias=True)
+        self.plot_widget.showAxis("right")
+        self.plot_widget.plotItem.vb.setLimits(xMin=0) # type: ignore
 
         # Controls
         autoscale_button.clicked.connect(self.plot_widget.setAutoVisible)
@@ -294,8 +335,8 @@ class LivePlot(QMainWindow):
         # Create a checkbox for the source
         checkbox = DataSourceCheckBox(name, color)
         if enabled:
-            checkbox.setChecked(True)
-        checkbox.stateChanged.connect(lambda: self._update_selected_source(name))
+            checkbox.set_checked(0, True)
+        checkbox.selectionChanged.connect(lambda: self._update_selected_source(name))
         self.source_checkboxes[name] = checkbox
         self.source_layout.addWidget(checkbox)
 
@@ -307,8 +348,8 @@ class LivePlot(QMainWindow):
 
     def _update_selected_source(self, name: str) -> None:
         """Update the visibility of a data source."""
-        self.data_sources[name]["enabled"] = self.source_checkboxes[name].isChecked()
-        self.on_data_source_selection_changed.emit(name, self.source_checkboxes[name].isChecked())
+        self.data_sources[name]["enabled"] = self.source_checkboxes[name].is_checked(0)
+        self.on_data_source_selection_changed.emit(name, self.source_checkboxes[name].is_checked(0))
 
     def get_data_sources(self):
         return self.data_sources
@@ -345,7 +386,7 @@ class LivePlot(QMainWindow):
             enabled: The new enabled state
         """
         self.data_sources[name]["enabled"] = enabled
-        self.source_checkboxes[name].setChecked(enabled)
+        self.source_checkboxes[name].set_checked(0, enabled)
 
 
     def remove_data_source(self, name: str) -> None:

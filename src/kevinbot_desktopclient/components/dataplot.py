@@ -4,7 +4,6 @@ import sys
 from collections.abc import Callable
 from threading import Event, Thread
 import time
-import atexit
 
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Qt, QTimer, Signal, SignalInstance
@@ -143,23 +142,24 @@ class DataSourceManagerItem(QFrame):
 class DataGenerator(Thread):
     """Thread class for generating data points."""
     
-    def __init__(self, data_sources: dict, connectors: dict, curves: dict):
+    def __init__(self, data_sources: dict, connectors: dict):
         super().__init__()
         self.data_sources = data_sources
-        self.connectors = connectors
-        self.curves = curves
+        self.connectors: dict[str, DataConnector] = connectors
         self.plot_x = 0.0
         self.update_interval = 0.1  # 100ms default
+        self.daemon = True
         self._stop_event = Event()
         
     def run(self):
         """Main thread loop for generating data points."""
         while not self._stop_event.is_set():
-            for name, data in self.data_sources.items():
-                y_value = data["func"](self.plot_x)
-                self.connectors[name].cb_append_data_point(y_value)
-            
-            self.plot_x += 0.1
+            if self.connectors:
+                for name, data in self.data_sources.items():
+                    y_value = data["func"](self.plot_x)
+                    self.connectors[name].cb_append_data_point(y_value)
+                
+                self.plot_x += 0.1
             time.sleep(self.update_interval)
     
     def stop(self):
@@ -189,7 +189,7 @@ class LivePlot(QMainWindow):
         self.plot_x: float = 0
 
         # Timer to update data        
-        self.data_generator = DataGenerator(self.data_sources, self.data_connectors, self.plot_curves)
+        self.data_generator = DataGenerator(self.data_sources, self.data_connectors)
         self.data_generator.start()
 
     def _setup_ui(self) -> None:
@@ -273,10 +273,6 @@ class LivePlot(QMainWindow):
         self.plot_widget.setLabel("bottom", "Time", units="s")
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.showGrid(x=True, y=True)
-        
-        # Set default view range
-        self.plot_widget.setXRange(-10, 0)
-        self.plot_widget.setYRange(-2, 2)
 
         # Controls
         autoscale_button.clicked.connect(self.plot_widget.auto_btn_clicked)
@@ -336,7 +332,7 @@ class LivePlot(QMainWindow):
 
         # Create pglive components
         curve = LiveLinePlot(pen=pg.mkPen(color, width=width))
-        connector = DataConnector(curve, max_points=1000)  # Limit to 1000 points for performance
+        connector = DataConnector(curve, update_rate=90)  # don't implode the gui :)
         
         self.plot_curves[name] = curve
         self.data_connectors[name] = connector
@@ -390,7 +386,8 @@ class LivePlot(QMainWindow):
         """
         self.data_sources[name]["enabled"] = enabled
         self.source_checkboxes[name].setChecked(enabled)
-        self.plot_curves[name].setVisible(enabled)
+        if not (self.plot_curves[name].isVisible() == enabled):
+            self.plot_curves[name].setVisible(enabled)
 
     def remove_data_source(self, name: str) -> None:
         """
@@ -414,17 +411,6 @@ class LivePlot(QMainWindow):
         del self.plot_curves[name]
         del self.data_connectors[name]
 
-    def update_plot(self) -> None:
-        """Update the plot with new data points."""
-        # Update each data source
-        for name, data in self.data_sources.items():
-            if data["enabled"]:
-                # Generate the y-value using the source function
-                y_value = data["func"](self.plot_x)
-                # Add new point to the data connector
-                self.data_connectors[name].cb_append_data_point(y_value, self.plot_x)
-
-        self.plot_x += 0.1  # Increment x-value by 0.1
 
 
 if __name__ == "__main__":

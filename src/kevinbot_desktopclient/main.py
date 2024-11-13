@@ -570,7 +570,6 @@ class MainWindow(QMainWindow):
         # * Plot
         self.plot_docks: list[QMdiSubWindow] = []
         self.plots: list[LivePlot] = []
-        self.plot_threads = []
 
         plot_settings: list = json.loads(self.settings.value("plot/settings", type=str))["plots"] # type: ignore
 
@@ -661,7 +660,6 @@ class MainWindow(QMainWindow):
         plot = LivePlot()
         self.plots.append(plot)
         plot_layout.addWidget(plot)
-        self.plot_threads.append(plot.data_generator)
 
         plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
         plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
@@ -1419,11 +1417,9 @@ def main(app: QApplication | None = None):
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Bold.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf")
 
-    win = MainWindow(app, dc_log_queue)
+    MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
-    app.exec()
-    for plot_thread in win.plot_threads:
-        plot_thread.stop()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

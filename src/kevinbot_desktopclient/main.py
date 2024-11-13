@@ -63,7 +63,9 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QAbstractItemView
+    QAbstractItemView,
+    QMdiArea,
+    QMdiSubWindow
 )
 
 from kevinbot_desktopclient import constants
@@ -485,11 +487,6 @@ class MainWindow(QMainWindow):
         self.controller_indicator_label = QLabel("Controller")
         self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
 
-        # * Plot
-        self.plot_docks: list[QDockWidget] = []
-        self.plots: list[LivePlot] = []
-        self.add_plot()
-
         self.state_label = QLabel("No Communications")
         self.state_label.setFont(QFont(self.fontInfo().family(), 16, weight=QFont.Weight.DemiBold))
         self.state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -510,7 +507,6 @@ class MainWindow(QMainWindow):
         hline.setFixedHeight(2)
         self.main_layout.addWidget(hline)
 
-        self.plot_manager_widget.setLayout(self.plot_manager_layout(self.settings, self.plots))
         self.debug.setLayout(self.debug_layout(self.settings))
         (
             self.comm_layout,
@@ -568,6 +564,24 @@ class MainWindow(QMainWindow):
         self.right_tabs.addTab(QWidget(), qta.icon("mdi.text-to-speech"), "Speech")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.cogs"), "System")
 
+        self.mdi = QMdiArea()
+        self.root_layout.addWidget(self.mdi)
+
+        # * Plot
+        self.plot_docks: list[QMdiSubWindow] = []
+        self.plots: list[LivePlot] = []
+        self.plot_threads = []
+
+        plot_settings: list = json.loads(self.settings.value("plot/settings", type=str))["plots"] # type: ignore
+
+        if len(plot_settings) > 0:
+            for _ in plot_settings:
+                self.add_plot()
+        else:
+            self.add_plot()
+            
+        self.plot_manager_widget.setLayout(self.plot_manager_layout(self.settings, self.plots))
+        
         self.show()
 
     def fpv_new_frame(self):
@@ -600,6 +614,10 @@ class MainWindow(QMainWindow):
             source_manager.width_changed.connect(self.update_plots_width)
             list_view.setItemWidget(item, source_manager)
 
+        add_plot_button = QPushButton("Add Plotter")
+        add_plot_button.clicked.connect(self.add_plot)
+        layout.addWidget(add_plot_button)
+
         return layout
     
     def update_plots_color(self, name: str, color: str):
@@ -624,14 +642,15 @@ class MainWindow(QMainWindow):
         self.settings.setValue("plot/settings", json.dumps({"plots": data}))
 
     def add_plot(self, title="Plot"):
-        dock = QDockWidget("Plot")
+        dock = QMdiSubWindow()
         self.plot_docks.append(dock)
-        dock.setFeatures(
-            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
-            | QDockWidget.DockWidgetFeature.DockWidgetMovable
-            | QDockWidget.DockWidgetFeature.DockWidgetClosable
-        )
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+        self.mdi.addSubWindow(dock)
+        # dock.setFeatures(
+        #     QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+        #     | QDockWidget.DockWidgetFeature.DockWidgetMovable
+        #     | QDockWidget.DockWidgetFeature.DockWidgetClosable
+        # )
+        # self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
 
         plot_widget = QWidget()
         dock.setWidget(plot_widget)
@@ -642,6 +661,7 @@ class MainWindow(QMainWindow):
         plot = LivePlot()
         self.plots.append(plot)
         plot_layout.addWidget(plot)
+        self.plot_threads.append(plot.data_generator)
 
         plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
         plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
@@ -1080,6 +1100,8 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drivecmd(self, controller: pyglet.input.Controller, _xvalue, _yvalue):
+        print("" + str(time.time()) + " " + str(_xvalue) + " " + str(_yvalue))
+
         if self.state.app_state in [
             AppState.ESTOPPED,
             AppState.NO_COMMUNICATIONS,
@@ -1397,9 +1419,11 @@ def main(app: QApplication | None = None):
     QFontDatabase.addApplicationFont("assets/fonts/Roboto/Roboto-Bold.ttf")
     QFontDatabase.addApplicationFont("assets/fonts/JetBrains_Mono/static/JetBrainsMono-Regular.ttf")
 
-    MainWindow(app, dc_log_queue)
+    win = MainWindow(app, dc_log_queue)
     logger.debug("Executing app gui")
     app.exec()
+    for plot_thread in win.plot_threads:
+        plot_thread.stop()
 
 
 if __name__ == "__main__":

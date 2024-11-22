@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, Qt, QTimer, Signal, SignalInstance
+from PySide6.QtCore import QSize, Qt, QTimer, Signal, SignalInstance, QRunnable, QThreadPool
 from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from kevinbot_desktopclient.ui.delegates import ComboBoxNoTextDelegate
 from kevinbot_desktopclient.ui.widgets import ColorBlock
 
+import time
 
 def color_string_to_hex(color_str):
     # Map of shorthand color strings to their hex codes
@@ -173,6 +174,29 @@ class DataSourceManagerItem(QFrame):
     def _width_changed_event(self, _index: int) -> None:
         self.width_changed.emit(self.label.text(), self.width_select.currentData())
 
+class LivePlotUpdater(QRunnable):
+    def __init__(self, parent: 'LivePlot', data_retriever: Callable[..., dict]):
+        super().__init__()
+
+        self.getter = data_retriever
+        self.plot = parent
+
+    def run(self):
+        # Add new x value
+        self.plot.data_x.append(self.plot.plot_x)
+
+        # Update each data source
+        for name, data in self.getter().items():
+            # Generate the y-value using the source function
+            y_value = data["func"](self.plot.plot_x)
+            self.plot.data_y[name].append(y_value)
+
+            # Update the plot data item, but set visibility based on selection
+            self.plot.plot_data_items[name].setData(self.plot.data_x, self.plot.data_y[name])
+            self.plot.plot_data_items[name].setVisible(data["enabled"])
+
+        self.plot.plot_x += 0.1  # Increment x-value by 0.1
+
 
 class LivePlot(QMainWindow):
     on_data_source_selection_changed = Signal(str, bool)
@@ -285,6 +309,9 @@ class LivePlot(QMainWindow):
         # Controls
         autoscale_button.clicked.connect(self.plot_widget.setAutoVisible)
         autoscale_button.clicked.connect(self.plot_widget.enableAutoRange)
+
+        # Updates
+        self.worker_pool = QThreadPool()
 
     def toggle_play_pause(self) -> None:
         """Toggle between playing and pausing the plot updates."""
@@ -414,20 +441,8 @@ class LivePlot(QMainWindow):
 
     def update_plot(self) -> None:
         """Update the plot with new data points."""
-        # Add new x value
-        self.data_x.append(self.plot_x)
-
-        # Update each data source
-        for name, data in self.data_sources.items():
-            # Generate the y-value using the source function
-            y_value = data["func"](self.plot_x)
-            self.data_y[name].append(y_value)
-
-            # Update the plot data item, but set visibility based on selection
-            self.plot_data_items[name].setData(self.data_x, self.data_y[name])
-            self.plot_data_items[name].setVisible(data["enabled"])
-
-        self.plot_x += 0.1  # Increment x-value by 0.1
+        worker = LivePlotUpdater(self, lambda: self.data_sources)
+        self.worker_pool.start(worker)
 
 
 if __name__ == "__main__":

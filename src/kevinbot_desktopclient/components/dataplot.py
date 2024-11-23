@@ -26,9 +26,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from pglive.sources.data_connector import DataConnector
-from pglive.sources.live_plot import LiveLinePlot
-from pglive.sources.live_plot_widget import LivePlotWidget
 
 from kevinbot_desktopclient.ui.delegates import ComboBoxNoTextDelegate
 from kevinbot_desktopclient.ui.widgets import ColorBlock
@@ -184,54 +181,29 @@ class LivePlotUpdater(QRunnable):
         self.getter = data_retriever
         self.plot = parent
 
+        self.running = True
+
     def run(self):
-        # Add new x value
-        self.plot.data_x.append(self.plot.plot_x)
+        while True:
+            # Add new x value
+            self.plot.data_x.append(self.plot.plot_x)
 
-        # Update each data source
-        for name, data in self.getter().items():
-            # Generate the y-value using the source function
-            y_value = data["func"](self.plot.plot_x)
-            self.plot.data_y[name].append(y_value)
+            # Update each data source
+            for name, data in self.getter().items():
+                # Generate the y-value using the source function
+                y_value = data["func"](self.plot.plot_x)
+                self.plot.data_y[name].append(y_value)
 
-            # Update the plot data item, but set visibility based on selection
-            self.plot.plot_data_items[name].setData(self.plot.data_x, self.plot.data_y[name])
-            self.plot.plot_data_items[name].setVisible(data["enabled"])
+                # Update the plot data item, but set visibility based on selection
+                self.plot.plot_data_items[name].setData(self.plot.data_x, self.plot.data_y[name])
+                self.plot.plot_data_items[name].setVisible(data["enabled"])
 
-        self.plot.plot_x += 0.1  # Increment x-value by 0.1
+            self.plot.plot_x += 0.1  # Increment x-value by 0.1
+            if not self.running:
+                break
 
-
-
-class DataGenerator(Thread):
-    """Thread class for generating data points."""
-    
-    def __init__(self, data_sources: dict, connectors: dict):
-        super().__init__()
-        self.data_sources = data_sources
-        self.connectors: dict[str, DataConnector] = connectors
-        self.plot_x = 0.0
-        self.update_interval = 0.1  # 100ms default
-        self.daemon = True
-        self._stop_event = Event()
-        
-    def run(self):
-        """Main thread loop for generating data points."""
-        while not self._stop_event.is_set():
-            if self.connectors:
-                for name, data in self.data_sources.items():
-                    y_value = data["func"](self.plot_x)
-                    self.connectors[name].cb_append_data_point(y_value)
-                
-                self.plot_x += 0.1
-            time.sleep(self.update_interval)
-    
     def stop(self):
-        """Stop the data generation thread."""
-        self._stop_event.set()
-        
-    def set_update_interval(self, interval_ms: int):
-        """Set the update interval in milliseconds."""
-        self.update_interval = interval_ms / 1000.0
+        self.running = False
 
         
 class LivePlot(QMainWindow):
@@ -243,17 +215,19 @@ class LivePlot(QMainWindow):
         # Initialize data structures for dynamic sources
         self.data_sources: dict[str, dict] = {}
         self.source_checkboxes: dict[str, DataSourceCheckBox] = {}
-        self.data_connectors: dict[str, DataConnector] = {}
-        self.plot_curves: dict[str, LiveLinePlot] = {}
+        self.data_y: dict[str, list[float]] = {}
+        self.plot_data_items: dict[str, pg.PlotDataItem] = {}
 
         self._setup_ui()
 
-        # Initialize time tracking
+        # Initialize the data series for real-time updates
+        self.data_x: list[float] = []
         self.plot_x: float = 0
 
-        # Timer to update data        
-        self.data_generator = DataGenerator(self.data_sources, self.data_connectors)
-        self.data_generator.start()
+        # Timer to update data
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_plot)
+        self.timer.start(100)  # 100ms default update rate
 
     def _setup_ui(self) -> None:
         """Set up the user interface components."""
@@ -327,8 +301,8 @@ class LivePlot(QMainWindow):
         # Add sidebar to main layout
         main_layout.addWidget(sidebar)
 
-        # Initialize the plot widget using pglive
-        self.plot_widget = LivePlotWidget()
+        # Initialize the plot widget
+        self.plot_widget = pg.PlotWidget()
         main_layout.addWidget(self.plot_widget, 5)
 
         # Set plot ranges and labels
@@ -350,20 +324,18 @@ class LivePlot(QMainWindow):
     def toggle_play_pause(self) -> None:
         """Toggle between playing and pausing the plot updates."""
         if self.play_pause_button.isChecked():
-            self.data_generator.stop()
+            self.timer.stop()
             self.play_pause_button.setText("Resume")
         else:
-            # Create new thread if stopped
-            if not self.data_generator.is_alive():
-                self.data_generator = DataGenerator(self.data_sources, self.data_connectors)
-                self.data_generator.update_interval = self.rate_spinbox.value() / 1000.0
-                self.data_generator.start()
+            self.timer.start()
             self.play_pause_button.setText("Pause")
 
     def clear_data(self) -> None:
         """Clear all plotted data."""
-        for connector in self.data_connectors.values():
-            connector.clear()
+        self.data_x.clear()
+        for name in self.data_sources:
+            self.data_y[name].clear()
+            self.plot_data_items[name].clear()
         self.plot_x = 0
 
     def update_timer_interval(self, value: int) -> None:
@@ -372,7 +344,12 @@ class LivePlot(QMainWindow):
         Args:
             value: New interval in milliseconds
         """
-        self.data_generator.set_update_interval(value)
+        was_active = self.timer.isActive()
+        if was_active:
+            self.timer.stop()
+        self.timer.setInterval(value)
+        if was_active:
+            self.timer.start()
 
     def add_data_source(self, name: str, func: Callable[[float], float], color: str = "w", width: int = 2, *, enabled = False) -> None:
         """
@@ -382,8 +359,6 @@ class LivePlot(QMainWindow):
             name: The name of the data source
             func: A function that takes a float x value and returns a float y value
             color: The color to use for plotting (default: white)
-            width: Line width (default: 2)
-            enabled: Whether the source is initially enabled (default: False)
         """
         if name in self.data_sources:
             msg = f"Data source '{name}' already exists"
@@ -400,25 +375,17 @@ class LivePlot(QMainWindow):
         self.source_checkboxes[name] = checkbox
         self.source_layout.addWidget(checkbox)
 
-        # Create pglive components
-        curve = LiveLinePlot(pen=pg.mkPen(color, width=width))
-        connector = DataConnector(curve, update_rate=90)  # don't implode the gui :)
+        # Initialize data structures for the new source
+        self.data_y[name] = []
         
-        self.plot_curves[name] = curve
-        self.data_connectors[name] = connector
-        
-        # Add curve to plot
-        self.plot_widget.addItem(curve)
-        curve.setVisible(enabled)
+        self.plot_data_items[name] = self.plot_widget.plot(pen=pg.mkPen(color, width=width))
 
         self.source_group.setFixedWidth(self.source_group.sizeHint().width() + 28)
 
     def _update_selected_source(self, name: str) -> None:
         """Update the visibility of a data source."""
-        is_checked = self.source_checkboxes[name].is_checked(0)
-        self.data_sources[name]["enabled"] = is_checked
-        self.plot_curves[name].setVisible(is_checked)
-        self.on_data_source_selection_changed.emit(name, is_checked)
+        self.data_sources[name]["enabled"] = self.source_checkboxes[name].is_checked(0)
+        self.on_data_source_selection_changed.emit(name, self.source_checkboxes[name].is_checked(0))
 
     def get_data_sources(self):
         return self.data_sources
@@ -432,7 +399,7 @@ class LivePlot(QMainWindow):
             color: The new color to use for plotting (default: white)
         """
         self.data_sources[name]["color"] = color
-        self.plot_curves[name].setPen(pg.mkPen(color, width=self.data_sources[name]["width"]))
+        self.plot_data_items[name].setPen(pg.mkPen(color, width=self.data_sources[name]["width"]))
         self.source_checkboxes[name].set_color(color)
 
     def edit_pen_width(self, name: str, width: int):
@@ -444,7 +411,7 @@ class LivePlot(QMainWindow):
             width: The new width to use for plotting
         """
         self.data_sources[name]["width"] = width
-        self.plot_curves[name].setPen(pg.mkPen(self.data_sources[name]["color"], width=width))
+        self.plot_data_items[name].setPen(pg.mkPen(self.data_sources[name]["color"], width=width))
 
     def edit_enabled(self, name: str, enabled: bool):
         """
@@ -456,8 +423,7 @@ class LivePlot(QMainWindow):
         """
         self.data_sources[name]["enabled"] = enabled
         self.source_checkboxes[name].set_checked(0, enabled)
-        if not (self.plot_curves[name].isVisible() == enabled):
-            self.plot_curves[name].setVisible(enabled)
+
 
     def remove_data_source(self, name: str) -> None:
         """
@@ -474,13 +440,18 @@ class LivePlot(QMainWindow):
         self.source_checkboxes[name].deleteLater()
         del self.source_checkboxes[name]
 
-        # Remove the curve from the plot
-        self.plot_widget.removeItem(self.plot_curves[name])
-        # Clean up data structures
+        # Remove the data
         del self.data_sources[name]
-        del self.plot_curves[name]
-        del self.data_connectors[name]
+        del self.data_y[name]
 
+        # Remove the plot item
+        self.plot_widget.removeItem(self.plot_data_items[name])
+        del self.plot_data_items[name]
+
+    def update_plot(self) -> None:
+        """Update the plot with new data points."""
+        worker = LivePlotUpdater(self, lambda: self.data_sources)
+        self.worker_pool.start(worker)
 
 
 if __name__ == "__main__":

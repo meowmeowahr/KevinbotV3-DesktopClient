@@ -641,9 +641,12 @@ class MainWindow(QMainWindow):
         self.settings.setValue("plot/settings", json.dumps({"plots": data}))
 
     def add_plot(self, title="Plot"):
+        print("add plot")
         dock = QMdiSubWindow()
         self.plot_docks.append(dock)
         self.mdi.addSubWindow(dock)
+        dock.show()
+        print(self.mdi.subWindowList())
         # dock.setFeatures(
         #     QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
         #     | QDockWidget.DockWidgetFeature.DockWidgetMovable

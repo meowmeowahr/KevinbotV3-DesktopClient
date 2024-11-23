@@ -415,7 +415,7 @@ class LivePlot(QMainWindow):
 
     def _update_selected_source(self, name: str) -> None:
         """Update the visibility of a data source."""
-        is_checked = self.source_checkboxes[name].isChecked()
+        is_checked = self.source_checkboxes[name].is_checked(0)
         self.data_sources[name]["enabled"] = is_checked
         self.plot_curves[name].setVisible(is_checked)
         self.on_data_source_selection_changed.emit(name, is_checked)
@@ -455,7 +455,7 @@ class LivePlot(QMainWindow):
             enabled: The new enabled state
         """
         self.data_sources[name]["enabled"] = enabled
-        self.source_checkboxes[name].setChecked(enabled)
+        self.source_checkboxes[name].set_checked(0, enabled)
         if not (self.plot_curves[name].isVisible() == enabled):
             self.plot_curves[name].setVisible(enabled)
 

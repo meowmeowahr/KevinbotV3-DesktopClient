@@ -386,7 +386,7 @@ class LivePlot(QMainWindow):
             self.plot_data_items[name].setData(self.data_x, self.data_y[name])
             self.plot_data_items[name].setVisible(data["enabled"])
 
-        self.plot_x += 0.1  # Increment x-value by 0.1
+        self.plot_x += self.timer.interval() / 1000
 
 
 if __name__ == "__main__":

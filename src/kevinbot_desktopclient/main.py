@@ -1,4 +1,4 @@
-from functools import partial
+import json
 import os
 import platform
 import queue
@@ -8,6 +8,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import partial
 from typing import override
 
 import ansi2html
@@ -47,6 +48,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QPushButton,
     QRadioButton,
@@ -60,6 +63,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QAbstractItemView
 )
 
 from kevinbot_desktopclient import constants
@@ -69,7 +73,7 @@ from kevinbot_desktopclient.components import (
     begin_controller_backend,
     controllers,
 )
-from kevinbot_desktopclient.components.dataplot import LivePlot
+from kevinbot_desktopclient.components.dataplot import DataSourceManagerItem, LivePlot
 from kevinbot_desktopclient.components.ping import PingWidget
 from kevinbot_desktopclient.enums import Cardinal
 from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
@@ -286,6 +290,24 @@ class MainWindow(QMainWindow):
         self.left_stick_update.connect(self.drivecmd)
         self.right_stick_update.connect(self.drivecmd)
 
+        # * Style Overrides
+        self.setStyleSheet(
+            "#enable_button, #disable_button, #estop_button {"
+            "font-size: 24px;"
+            "font-weight: bold;"
+            "color: #212121;"
+            "}"
+            "#enable_button {"
+            "background-color: #00C853;"
+            "}"
+            "#disable_button {"
+            "background-color: #EF5350;"
+            "}"
+            "#estop_button {"
+            "background-color: #FF9722;"
+            "}"
+        )
+
         # * Tabs
         self.tabs = QTabWidget()
         self.tabs.setIconSize(QSize(36, 36))
@@ -310,6 +332,7 @@ class MainWindow(QMainWindow):
 
         tabs: list[tuple[str, QIcon]] = [
             ("Main", QIcon("assets/icons/icon.svg")),
+            ("Plots", qta.icon("mdi6.chart-multiple")),
             ("Controllers", qta.icon("mdi6.controller")),
             ("Debug", qta.icon("mdi6.bug")),
             ("Settings", qta.icon("mdi6.cog")),
@@ -317,6 +340,7 @@ class MainWindow(QMainWindow):
         ]
         (
             self.main,
+            self.plot_manager_widget,
             self.connection_widget,
             self.debug,
             self.settings_widget,
@@ -334,23 +358,6 @@ class MainWindow(QMainWindow):
         # * Main Tab
         self.main_layout = QVBoxLayout()
         self.main.setLayout(self.main_layout)
-
-        self.setStyleSheet(
-            "#enable_button, #disable_button, #estop_button {"
-            "font-size: 24px;"
-            "font-weight: bold;"
-            "color: #212121;"
-            "}"
-            "#enable_button {"
-            "background-color: #00C853;"
-            "}"
-            "#disable_button {"
-            "background-color: #EF5350;"
-            "}"
-            "#estop_button {"
-            "background-color: #FF9722;"
-            "}"
-        )
 
         # * State Bar
         self.state_dock = QDockWidget("State")
@@ -479,6 +486,8 @@ class MainWindow(QMainWindow):
         self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
 
         # * Plot
+        self.plot_docks: list[QDockWidget] = []
+        self.plots: list[LivePlot] = []
         self.add_plot()
 
         self.state_label = QLabel("No Communications")
@@ -501,7 +510,7 @@ class MainWindow(QMainWindow):
         hline.setFixedHeight(2)
         self.main_layout.addWidget(hline)
 
-        self.settings_widget.setLayout(self.settings_layout(self.settings))
+        self.plot_manager_widget.setLayout(self.plot_manager_layout(self.settings, self.plots))
         self.debug.setLayout(self.debug_layout(self.settings))
         (
             self.comm_layout,
@@ -510,6 +519,7 @@ class MainWindow(QMainWindow):
             self.pov_visual,
         ) = self.connection_layout()
         self.connection_widget.setLayout(self.comm_layout)
+        self.settings_widget.setLayout(self.settings_layout(self.settings))
         self.about_widget.setLayout(self.about_layout())
 
         # * Main Split View
@@ -568,51 +578,110 @@ class MainWindow(QMainWindow):
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.start()
 
+    def plot_manager_layout(self, settings: QSettings, plots: list[LivePlot]):
+        layout = QVBoxLayout()
+
+        list_view = QListWidget()
+        list_view.setUniformItemSizes(True)
+        list_view.setSpacing(4)
+        list_view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        layout.addWidget(list_view)
+
+        if len(self.plots) == 0:
+            return layout
+
+        for name, data in self.plots[0].get_data_sources().items():
+            item = QListWidgetItem(name)
+            item.setSizeHint(QSize(320, 44))
+            list_view.addItem(item)
+
+            source_manager = DataSourceManagerItem(name, data["color"], data["width"])
+            source_manager.color_changed.connect(self.update_plots_color)
+            source_manager.width_changed.connect(self.update_plots_width)
+            list_view.setItemWidget(item, source_manager)
+
+        return layout
+    
+    def update_plots_color(self, name: str, color: str):
+        for plot in self.plots:
+            if name in plot.get_data_sources():
+                plot.edit_pen_color(name, color)
+        self.save_plot_settings()
+
+    def update_plots_width(self, name: str, width: int):
+        for plot in self.plots:
+            if name in plot.get_data_sources():
+                plot.edit_pen_width(name, width)
+        self.save_plot_settings()
+
+    def save_plot_settings(self):
+        data: list[list[dict]] = []
+        for plot in self.plots:
+            plot_data = []
+            for key, value in plot.get_data_sources().items():
+                plot_data.append({"name": key, "color": value["color"], "width": value["width"], "enabled": value["enabled"]})
+            data.append(plot_data)
+        self.settings.setValue("plot/settings", json.dumps({"plots": data}))
+
     def add_plot(self, title="Plot"):
-        self.plot_dock = QDockWidget("Plot")
-        self.plot_dock.setFeatures(
+        dock = QDockWidget("Plot")
+        self.plot_docks.append(dock)
+        dock.setFeatures(
             QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
             | QDockWidget.DockWidgetFeature.DockWidgetMovable
             | QDockWidget.DockWidgetFeature.DockWidgetClosable
         )
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
 
-        self.plot_widget = QWidget()
-        self.plot_dock.setWidget(self.plot_widget)
+        plot_widget = QWidget()
+        dock.setWidget(plot_widget)
 
-        self.plot_layout = QVBoxLayout()
-        self.plot_widget.setLayout(self.plot_layout)
+        plot_layout = QVBoxLayout()
+        plot_widget.setLayout(plot_layout)
 
-        self.plot = LivePlot()
-        self.plot_layout.addWidget(self.plot)
+        plot = LivePlot()
+        self.plots.append(plot)
+        plot_layout.addWidget(plot)
 
-        self.plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
-        self.plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
-        self.plot.add_data_source("IMU/Gyro/Roll", lambda _: self.robot.get_state().imu.gyro[2], "b")
+        plot.add_data_source("IMU/Gyro/Yaw", lambda _: self.robot.get_state().imu.gyro[0], "r")
+        plot.add_data_source("IMU/Gyro/Pitch", lambda _: self.robot.get_state().imu.gyro[1], "g")
+        plot.add_data_source("IMU/Gyro/Roll", lambda _: self.robot.get_state().imu.gyro[2], "b")
 
-        self.plot.add_data_source("IMU/Accel/Yaw", lambda _: self.robot.get_state().imu.accel[0], "m")
-        self.plot.add_data_source("IMU/Accel/Pitch", lambda _: self.robot.get_state().imu.accel[1], "c")
-        self.plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
+        plot.add_data_source("IMU/Accel/Yaw", lambda _: self.robot.get_state().imu.accel[0], "m")
+        plot.add_data_source("IMU/Accel/Pitch", lambda _: self.robot.get_state().imu.accel[1], "c")
+        plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
 
         for i in range(len(self.robot.get_state().battery.voltages)):
-            self.plot.add_data_source(f"Battery/Voltage{i+1}", partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]), ['r', 'g', 'b', 'm'][i%3])
+            plot.add_data_source(f"Battery/Voltage{i+1}", partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]), ['r', 'g', 'b', 'm'][i%3])
 
-        self.plot.add_data_source("Enviro/Temp", lambda _: self.robot.get_state().enviro.temperature, "#e91e63")
-        self.plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
-        self.plot.add_data_source("Enviro/Pres", lambda _: self.robot.get_state().enviro.pressure, "#cddc39")
+        plot.add_data_source("Enviro/Temp", lambda _: self.robot.get_state().enviro.temperature, "#e91e63")
+        plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
+        plot.add_data_source("Enviro/Pres", lambda _: self.robot.get_state().enviro.pressure, "#cddc39")
 
-        self.plot.add_data_source("Thermo/LeftMotor", lambda _: self.robot.get_state().thermal.left_motor, "#ff9800")
-        self.plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
-        self.plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
+        plot.add_data_source("Thermo/LeftMotor", lambda _: self.robot.get_state().thermal.left_motor, "#ff9800")
+        plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
+        plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
 
-        self.plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.left_power, "#ff5722")
-        self.plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.right_power, "#2196f3")
+        plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.left_power, "#ff5722")
+        plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.right_power, "#2196f3")
 
-        self.plot.add_data_source("Drive/LeftAmps", lambda _: self.robot.get_state().motion.amps[0], "#8bc34a")
-        self.plot.add_data_source("Drive/RightAmps", lambda _: self.robot.get_state().motion.amps[1], "#673ab7")
+        plot.add_data_source("Drive/LeftAmps", lambda _: self.robot.get_state().motion.amps[0], "#8bc34a")
+        plot.add_data_source("Drive/RightAmps", lambda _: self.robot.get_state().motion.amps[1], "#673ab7")
 
-        self.plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
-        self.plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
+        plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
+        plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
+
+
+        try:
+            settings: list = json.loads(self.settings.value("plot/settings", type=str))["plots"] # type: ignore
+            if len(settings) >= len(self.plots):
+                for item in settings[len(self.plots) - 1]:
+                    if item["name"] in plot.get_data_sources():
+                        plot.edit_pen_color(item["name"], item["color"])
+                        plot.edit_pen_width(item["name"], item["width"])
+                        plot.edit_enabled(item["name"], item["enabled"])
+        except (ValueError, IndexError) as e:
+            logger.error(f"Failed to load plot settings, selecting defaults, {repr(e)}")
 
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()

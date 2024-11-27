@@ -4,22 +4,28 @@ import sys
 from collections.abc import Callable
 
 import pyqtgraph as pg
-from PySide6.QtCore import QSize, QTimer, SignalInstance, Qt, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal, SignalInstance
+from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QCheckBox,
+    QComboBox,
     QFrame,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QSpinBox,
+    QTableView,
     QVBoxLayout,
     QWidget,
-    QScrollArea,
 )
 
+from kevinbot_desktopclient.ui.delegates import ComboBoxNoTextDelegate
 from kevinbot_desktopclient.ui.widgets import ColorBlock
 
 
@@ -67,6 +73,66 @@ class DataSourceCheckBox(QFrame):
         self.color.setMaximumWidth(10)
         self.color.set_color(color_string_to_hex(color))
         layout.addWidget(self.color)
+
+    def set_color(self, color: str):
+        self.color.set_color(color_string_to_hex(color))
+
+
+class DataSourceManagerItem(QFrame):
+    color_changed = Signal(str, str)
+    width_changed = Signal(str, int)
+    def __init__(self, source_name: str, color: str, width: int) -> None:
+        super().__init__()
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setObjectName("DataSourceCheckBoxFrame")
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self.label = QLabel(source_name)
+        layout.addWidget(self.label)
+
+        self.width_select = QComboBox()
+        for i in range(1, 6):
+            self.width_select.addItem(str(i), i)
+        self.width_select.setCurrentIndex(width - 1)
+        self.width_select.currentIndexChanged.connect(self._width_changed_event)
+        layout.addWidget(self.width_select)
+
+        self.color = QComboBox()
+
+        view = QTableView(
+            self.color
+        )
+        view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.color.setView(view)
+
+        view.verticalHeader().hide()
+        view.horizontalHeader().hide()
+
+        header = view.horizontalHeader()
+        for i in range(header.count()):
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+
+        self.color.setFixedSize(QSize(48, 36))
+        self.color.setItemDelegate(ComboBoxNoTextDelegate())
+
+        for col in ["r", "g", "b", "m", "c", "y", "#e91e63", "#3f51b5", "#cddc39", "#ff9800", "#607d8b", "#03a9f4", "#ff5722", "#2196f3", "#8bc34a", "#673ab7", "#795548", "#009688"]:
+            pixmap = QPixmap(32, 32)
+            pixmap.fill(QColor(color_string_to_hex(col)))
+            self.color.addItem(QIcon(pixmap), col, col)
+            self.color.setItemData(0, Qt.AlignmentFlag.AlignCenter, Qt.ItemDataRole.TextAlignmentRole)
+        self.color.setCurrentText(str(color))
+        self.color.currentIndexChanged.connect(self._color_changed_event)
+
+        layout.addWidget(self.color)
+
+    def _color_changed_event(self, _index: int) -> None:
+        self.color_changed.emit(self.label.text(), self.color.currentText())
+
+    def _width_changed_event(self, _index: int) -> None:
+        self.width_changed.emit(self.label.text(), self.width_select.currentData())
 
 
 class LivePlot(QMainWindow):
@@ -247,6 +313,41 @@ class LivePlot(QMainWindow):
     def get_data_sources(self):
         return self.data_sources
 
+    def edit_pen_color(self, name: str, color: str = "w"):
+        """
+        Edit the color of a data source's pen.
+
+        Args:
+            name: The name of the data source
+            color: The new color to use for plotting (default: white)
+        """
+        self.data_sources[name]["color"] = color
+        self.plot_data_items[name].setPen(pg.mkPen(color, width=self.data_sources[name]["width"]))
+        self.source_checkboxes[name].set_color(color)
+
+    def edit_pen_width(self, name: str, width: int):
+        """
+        Edit the width of a data source's pen.
+
+        Args:
+            name: The name of the data source
+            width: The new width to use for plotting
+        """
+        self.data_sources[name]["width"] = width
+        self.plot_data_items[name].setPen(pg.mkPen(self.data_sources[name]["color"], width=width))
+
+    def edit_enabled(self, name: str, enabled: bool):
+        """
+        Edit the enabled state of a data source.
+
+        Args:
+            name: The name of the data source
+            enabled: The new enabled state
+        """
+        self.data_sources[name]["enabled"] = enabled
+        self.source_checkboxes[name].setChecked(enabled)
+
+
     def remove_data_source(self, name: str) -> None:
         """
         Remove a data source from the plot.
@@ -285,7 +386,7 @@ class LivePlot(QMainWindow):
             self.plot_data_items[name].setData(self.data_x, self.data_y[name])
             self.plot_data_items[name].setVisible(data["enabled"])
 
-        self.plot_x += 0.1  # Increment x-value by 0.1
+        self.plot_x += self.timer.interval() / 1000
 
 
 if __name__ == "__main__":

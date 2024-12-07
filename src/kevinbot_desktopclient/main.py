@@ -569,7 +569,7 @@ class MainWindow(QMainWindow):
         self.right_tabs.setIconSize(QSize(24, 24))
         self.splitter.addWidget(self.right_tabs)
 
-        self.eyes_tab, self.eyes_skin, self.eyes_motion = self.eyes_widget(self.set_eye_skin, self.set_eye_motion)
+        self.eyes_tab, self.eyes_skin, self.eyes_motion, self.eyes_backlight = self.eyes_widget(self.set_eye_skin, self.set_eye_motion, self.set_backlight)
 
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting")
@@ -582,6 +582,10 @@ class MainWindow(QMainWindow):
 
         self.show()
 
+    def set_backlight(self, value: float):
+        if self.eyes:
+            self.eyes.set_backlight(value)
+
     def set_eye_skin(self, skin: kevinbotlib.EyeSkin):
         if self.eyes:
             self.eyes.set_skin(skin)
@@ -590,7 +594,7 @@ class MainWindow(QMainWindow):
         if self.eyes:
             self.eyes.set_motion(motion)
 
-    def eyes_widget(self, skin_setter: Callable[[kevinbotlib.EyeSkin], Any], motion_setter: Callable[[kevinbotlib.EyeMotion], Any]):
+    def eyes_widget(self, skin_setter: Callable[[kevinbotlib.EyeSkin], Any], motion_setter: Callable[[kevinbotlib.EyeMotion], Any], backlight_setter: Callable[[float], Any]):
             widget = QWidget()
             layout = QVBoxLayout()
             widget.setLayout(layout)
@@ -623,9 +627,20 @@ class MainWindow(QMainWindow):
             motions.currentIndexChanged.connect(lambda _: motion_setter(motions.currentData(Qt.ItemDataRole.UserRole)))
             top.addWidget(motions)
 
+            top.addSpacing(32)
+
+            bl_label = QLabel("Backlight")
+            top.addWidget(bl_label)
+
+            bl_slider = QSlider(Qt.Orientation.Horizontal)
+            bl_slider.setMinimum(0)
+            bl_slider.setMaximum(100)
+            bl_slider.valueChanged.connect(lambda value: backlight_setter(value / 100))
+            top.addWidget(bl_slider)
+
             top.addStretch()
 
-            return widget, skins, motions
+            return widget, skins, motions, bl_slider
 
 
     def fpv_new_frame(self):
@@ -1216,6 +1231,9 @@ class MainWindow(QMainWindow):
         self.eyes = kevinbotlib.eyes.MqttEyes(self.robot)
         self.eyes_skin.setCurrentIndex(self.eyes_skin.findData(self.eyes.get_state().settings.states.page))
         self.eyes_motion.setCurrentIndex(self.eyes_motion.findData(self.eyes.get_state().settings.states.motion))
+        self.eyes_backlight.blockSignals(True)
+        self.eyes_backlight.setValue(int(self.eyes.get_backlight() * 255))
+        self.eyes_backlight.blockSignals(False)
 
     def on_connect_error(self, _exception: Exception, summary: traceback.FrameSummary):
         self.connect_button.setEnabled(True)

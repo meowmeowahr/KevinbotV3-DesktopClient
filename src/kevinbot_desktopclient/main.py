@@ -9,17 +9,19 @@ import traceback
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import partial
-from typing import override
+from typing import Any, Callable, override
 
+import shortuuid
 import ansi2html
+
 import kevinbotlib
 import kevinbotlib.exceptions
+import kevinbotlib.eyes
+
 import pyglet
-import qdarktheme as qtd
-import qtawesome as qta
-import shortuuid
-from Custom_Widgets.QCustomModals import QCustomModals
+
 from loguru import logger
+
 from PySide6.QtCore import (
     QBuffer,
     QCommandLineParser,
@@ -63,8 +65,12 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QAbstractItemView
+    QAbstractItemView,
+    QComboBox
 )
+from Custom_Widgets.QCustomModals import QCustomModals
+import qtawesome as qta
+import qdarktheme as qtd
 
 from kevinbot_desktopclient import constants
 from kevinbot_desktopclient.components import (
@@ -231,6 +237,7 @@ class MainWindow(QMainWindow):
         self.robot = kevinbotlib.MqttKevinbot()
         self.robot.callback = self.update_states
         self.drive = kevinbotlib.Drivebase(self.robot)
+        self.eyes = None
 
         # Timers
         self.logger_timer = QTimer()
@@ -562,13 +569,64 @@ class MainWindow(QMainWindow):
         self.right_tabs.setIconSize(QSize(24, 24))
         self.splitter.addWidget(self.right_tabs)
 
+        self.eyes_tab, self.eyes_skin, self.eyes_motion = self.eyes_widget(self.set_eye_skin, self.set_eye_motion)
+
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting")
-        self.right_tabs.addTab(QWidget(), qta.icon("mdi6.eye"), "Eyes")
+        self.right_tabs.addTab(self.eyes_tab, qta.icon("mdi6.eye"), "Eyes")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi.text-to-speech"), "Speech")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.cogs"), "System")
 
+        for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
+            page.setEnabled(False)
+
         self.show()
+
+    def set_eye_skin(self, skin: kevinbotlib.EyeSkin):
+        if self.eyes:
+            self.eyes.set_skin(skin)
+
+    def set_eye_motion(self, motion: kevinbotlib.EyeMotion):
+        if self.eyes:
+            self.eyes.set_motion(motion)
+
+    def eyes_widget(self, skin_setter: Callable[[kevinbotlib.EyeSkin], Any], motion_setter: Callable[[kevinbotlib.EyeMotion], Any]):
+            widget = QWidget()
+            layout = QVBoxLayout()
+            widget.setLayout(layout)
+
+            top = QHBoxLayout()
+            layout.addLayout(top)
+
+            top.addStretch()
+
+            skin_label = QLabel("Skin")
+            top.addWidget(skin_label)
+
+            skins = QComboBox()
+            skins.addItem("Simple", kevinbotlib.EyeSkin.SIMPLE)
+            skins.addItem("Metal", kevinbotlib.EyeSkin.METAL)
+            skins.addItem("Neon", kevinbotlib.EyeSkin.NEON)
+            skins.currentIndexChanged.connect(lambda _: skin_setter(skins.currentData(Qt.ItemDataRole.UserRole)))
+            top.addWidget(skins)
+
+            top.addSpacing(32)
+
+            motion_label = QLabel("Motion")
+            top.addWidget(motion_label)
+
+            motions = QComboBox()
+            motions.addItem("Disabled", kevinbotlib.EyeMotion.DISABLE)
+            motions.addItem("Smooth (Left-to-Right)", kevinbotlib.EyeMotion.LEFT_RIGHT)
+            motions.addItem("Jump (Left-to-Right)", kevinbotlib.EyeMotion.JUMP)
+            motions.addItem("Manual", kevinbotlib.EyeMotion.MANUAL)
+            motions.currentIndexChanged.connect(lambda _: motion_setter(motions.currentData(Qt.ItemDataRole.UserRole)))
+            top.addWidget(motions)
+
+            top.addStretch()
+
+            return widget, skins, motions
+
 
     def fpv_new_frame(self):
         self.fpv_fps.setText(f"{round(1 / (time.time() - self.fpv_last_frame))} FPS")
@@ -1141,6 +1199,9 @@ class MainWindow(QMainWindow):
 
         for label in self.battery_volt_labels:
             label.setText("Unknown")
+        
+        for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
+            page.setEnabled(False)
 
     def on_connect(self):
         self.robot.callback = self.update_states
@@ -1148,6 +1209,13 @@ class MainWindow(QMainWindow):
         self.connect_indicator_led.set_color("#4caf50")
         self.connect_button.setText("Disconnect")
         self.connect_button.setEnabled(True)
+
+        for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
+            page.setEnabled(True)
+
+        self.eyes = kevinbotlib.eyes.MqttEyes(self.robot)
+        self.eyes_skin.setCurrentIndex(self.eyes_skin.findData(self.eyes.get_state().settings.states.page))
+        self.eyes_motion.setCurrentIndex(self.eyes_motion.findData(self.eyes.get_state().settings.states.motion))
 
     def on_connect_error(self, _exception: Exception, summary: traceback.FrameSummary):
         self.connect_button.setEnabled(True)

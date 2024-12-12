@@ -2,6 +2,7 @@ import json
 import os
 import platform
 import queue
+import socket
 import sys
 import threading
 import time
@@ -166,6 +167,7 @@ class ConnectionWorker(QRunnable):
                 UnicodeError,
                 ConnectionRefusedError,
                 kevinbotlib.exceptions.HandshakeTimeoutException,
+                socket.gaierror,
             ) as e:
                 logger.error(f"Failed to connect to MQTT broker: {e!r}")
                 self.signals.connection_error.emit(e, traceback.format_exc())

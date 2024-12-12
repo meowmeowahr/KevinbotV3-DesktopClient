@@ -239,7 +239,6 @@ class LivePlot(QMainWindow):
         self.plot_widget.setLabel("bottom", "Time", units="s")
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.showGrid(x=True, y=True)
-        pg.setConfigOptions(antialias=True)
 
         # Controls
         autoscale_button.clicked.connect(self.plot_widget.setAutoVisible)

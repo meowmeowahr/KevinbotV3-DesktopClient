@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 import pyqtgraph as pg
 from PySide6.QtCore import QSize, Qt, QTimer, Signal, SignalInstance
-from PySide6.QtGui import QColor, QIcon, QMouseEvent, QPixmap, QStandardItem, QStandardItemModel
+from PySide6.QtGui import QColor, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,

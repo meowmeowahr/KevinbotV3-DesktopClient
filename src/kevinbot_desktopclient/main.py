@@ -7,22 +7,23 @@ import sys
 import threading
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import partial
-from typing import Any, Callable, override
+from typing import Any, override
 
-import shortuuid
 import ansi2html
-
 import kevinbotlib
+import kevinbotlib.enums
 import kevinbotlib.exceptions
 import kevinbotlib.eyes
-
 import pyglet
-
+import qdarktheme as qtd
+import qtawesome as qta
+import shortuuid
+from Custom_Widgets.QCustomModals import QCustomModals
 from loguru import logger
-
 from PySide6.QtCore import (
     QBuffer,
     QCommandLineParser,
@@ -41,8 +42,10 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QCloseEvent, QFont, QFontDatabase, QIcon, QPixmap
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QCheckBox,
+    QComboBox,
     QDockWidget,
     QErrorMessage,
     QFileDialog,
@@ -66,12 +69,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QAbstractItemView,
-    QComboBox
 )
-from Custom_Widgets.QCustomModals import QCustomModals
-import qtawesome as qta
-import qdarktheme as qtd
 
 from kevinbot_desktopclient import constants
 from kevinbot_desktopclient.components import (
@@ -86,7 +84,7 @@ from kevinbot_desktopclient.enums import Cardinal
 from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
 from kevinbot_desktopclient.ui.plots import BatteryGraph, PovVisual, StickVisual
 from kevinbot_desktopclient.ui.util import add_tabs
-from kevinbot_desktopclient.ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, WarningBar
+from kevinbot_desktopclient.ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, MouseCheckSlider, WarningBar
 
 __version__ = "0.0.0"
 __authors__ = [
@@ -611,6 +609,7 @@ class MainWindow(QMainWindow):
             top.addWidget(skin_label)
 
             skins = QComboBox()
+            skins.addItem("Random Static", kevinbotlib.EyeSkin.TV_STATIC)
             skins.addItem("Simple", kevinbotlib.EyeSkin.SIMPLE)
             skins.addItem("Metal", kevinbotlib.EyeSkin.METAL)
             skins.addItem("Neon", kevinbotlib.EyeSkin.NEON)
@@ -635,7 +634,7 @@ class MainWindow(QMainWindow):
             bl_label = QLabel("Backlight")
             top.addWidget(bl_label)
 
-            bl_slider = QSlider(Qt.Orientation.Horizontal)
+            bl_slider = MouseCheckSlider(Qt.Orientation.Horizontal)
             bl_slider.setMinimum(0)
             bl_slider.setMaximum(100)
             bl_slider.valueChanged.connect(lambda value: backlight_setter(value / 100))
@@ -677,7 +676,7 @@ class MainWindow(QMainWindow):
             list_view.setItemWidget(item, source_manager)
 
         return layout
-    
+
     def update_plots_color(self, name: str, color: str):
         for plot in self.plots:
             if name in plot.get_data_sources():
@@ -757,7 +756,7 @@ class MainWindow(QMainWindow):
                         plot.edit_pen_width(item["name"], item["width"])
                         plot.edit_enabled(item["name"], item["enabled"])
         except (ValueError, IndexError) as e:
-            logger.error(f"Failed to load plot settings, selecting defaults, {repr(e)}")
+            logger.error(f"Failed to load plot settings, selecting defaults, {e!r}")
 
     def settings_layout(self, settings: QSettings):
         layout = QVBoxLayout()
@@ -1217,7 +1216,7 @@ class MainWindow(QMainWindow):
 
         for label in self.battery_volt_labels:
             label.setText("Unknown")
-        
+
         for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
             page.setEnabled(False)
 
@@ -1232,11 +1231,30 @@ class MainWindow(QMainWindow):
             page.setEnabled(True)
 
         self.eyes = kevinbotlib.eyes.MqttEyes(self.robot)
+        self.eyes.register_callback(kevinbotlib.enums.EyeCallbackType.Backlight, self.update_eye_backlight)
+        self.eyes.register_callback(kevinbotlib.enums.EyeCallbackType.Motion, self.update_eye_motion)
+        self.eyes.register_callback(kevinbotlib.enums.EyeCallbackType.Skin, self.update_eye_skin)
         self.eyes_skin.setCurrentIndex(self.eyes_skin.findData(self.eyes.get_state().settings.states.page))
         self.eyes_motion.setCurrentIndex(self.eyes_motion.findData(self.eyes.get_state().settings.states.motion))
         self.eyes_backlight.blockSignals(True)
         self.eyes_backlight.setValue(int(self.eyes.get_backlight() * 255))
         self.eyes_backlight.blockSignals(False)
+
+    def update_eye_backlight(self, value: float):
+        if not self.eyes_backlight.mouse_down:
+            self.eyes_backlight.blockSignals(True)
+            self.eyes_backlight.setValue(round(value * 100))
+            self.eyes_backlight.blockSignals(False)
+
+    def update_eye_motion(self, value: kevinbotlib.enums.EyeMotion):
+        self.eyes_motion.blockSignals(True)
+        self.eyes_motion.setCurrentIndex(self.eyes_motion.findData(value, Qt.ItemDataRole.UserRole))
+        self.eyes_motion.blockSignals(False)
+
+    def update_eye_skin(self, value: kevinbotlib.enums.EyeSkin):
+        self.eyes_skin.blockSignals(True)
+        self.eyes_skin.setCurrentIndex(self.eyes_skin.findData(value, Qt.ItemDataRole.UserRole))
+        self.eyes_skin.blockSignals(False)
 
     def on_connect_error(self, _exception: Exception, summary: traceback.FrameSummary):
         self.connect_button.setEnabled(True)

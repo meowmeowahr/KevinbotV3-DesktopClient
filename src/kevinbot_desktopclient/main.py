@@ -15,7 +15,6 @@ from typing import Any, override
 
 import ansi2html
 import kevinbotlib
-import kevinbotlib.enums
 import kevinbotlib.exceptions
 import kevinbotlib.eyes
 import pyglet
@@ -570,7 +569,9 @@ class MainWindow(QMainWindow):
         self.right_tabs.setIconSize(QSize(24, 24))
         self.splitter.addWidget(self.right_tabs)
 
-        self.eyes_tab, self.eyes_skin, self.eyes_motion, self.eyes_backlight = self.eyes_widget(self.set_eye_skin, self.set_eye_motion, self.set_backlight)
+        self.eyes_tab, self.eyes_skin, self.eyes_motion, self.eyes_backlight = self.eyes_widget(
+            self.set_eye_skin, self.set_eye_motion, self.set_backlight
+        )
 
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.robot-industrial"), "Arms && Head")
         self.right_tabs.addTab(QWidget(), qta.icon("mdi6.led-strip-variant"), "Lighting")
@@ -595,55 +596,59 @@ class MainWindow(QMainWindow):
         if self.eyes:
             self.eyes.set_motion(motion)
 
-    def eyes_widget(self, skin_setter: Callable[[kevinbotlib.EyeSkin], Any], motion_setter: Callable[[kevinbotlib.EyeMotion], Any], backlight_setter: Callable[[float], Any]):
-            widget = QWidget()
-            layout = QVBoxLayout()
-            widget.setLayout(layout)
+    def eyes_widget(
+        self,
+        skin_setter: Callable[[kevinbotlib.EyeSkin], Any],
+        motion_setter: Callable[[kevinbotlib.EyeMotion], Any],
+        backlight_setter: Callable[[float], Any],
+    ):
+        widget = QWidget()
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
 
-            top = QHBoxLayout()
-            layout.addLayout(top)
+        top = QHBoxLayout()
+        layout.addLayout(top)
 
-            top.addStretch()
+        top.addStretch()
 
-            skin_label = QLabel("Skin")
-            top.addWidget(skin_label)
+        skin_label = QLabel("Skin")
+        top.addWidget(skin_label)
 
-            skins = QComboBox()
-            skins.addItem("Random Static", kevinbotlib.EyeSkin.TV_STATIC)
-            skins.addItem("Simple", kevinbotlib.EyeSkin.SIMPLE)
-            skins.addItem("Metal", kevinbotlib.EyeSkin.METAL)
-            skins.addItem("Neon", kevinbotlib.EyeSkin.NEON)
-            skins.currentIndexChanged.connect(lambda _: skin_setter(skins.currentData(Qt.ItemDataRole.UserRole)))
-            top.addWidget(skins)
+        skins = QComboBox()
+        skins.addItem("Random Static", kevinbotlib.EyeSkin.TV_STATIC)
+        skins.addItem("Simple", kevinbotlib.EyeSkin.SIMPLE)
+        skins.addItem("Metal", kevinbotlib.EyeSkin.METAL)
+        skins.addItem("Neon", kevinbotlib.EyeSkin.NEON)
+        skins.currentIndexChanged.connect(lambda _: skin_setter(skins.currentData(Qt.ItemDataRole.UserRole)))
+        top.addWidget(skins)
 
-            top.addSpacing(32)
+        top.addSpacing(32)
 
-            motion_label = QLabel("Motion")
-            top.addWidget(motion_label)
+        motion_label = QLabel("Motion")
+        top.addWidget(motion_label)
 
-            motions = QComboBox()
-            motions.addItem("Disabled", kevinbotlib.EyeMotion.DISABLE)
-            motions.addItem("Smooth (Left-to-Right)", kevinbotlib.EyeMotion.LEFT_RIGHT)
-            motions.addItem("Jump (Left-to-Right)", kevinbotlib.EyeMotion.JUMP)
-            motions.addItem("Manual", kevinbotlib.EyeMotion.MANUAL)
-            motions.currentIndexChanged.connect(lambda _: motion_setter(motions.currentData(Qt.ItemDataRole.UserRole)))
-            top.addWidget(motions)
+        motions = QComboBox()
+        motions.addItem("Disabled", kevinbotlib.EyeMotion.DISABLE)
+        motions.addItem("Smooth (Left-to-Right)", kevinbotlib.EyeMotion.LEFT_RIGHT)
+        motions.addItem("Jump (Left-to-Right)", kevinbotlib.EyeMotion.JUMP)
+        motions.addItem("Manual", kevinbotlib.EyeMotion.MANUAL)
+        motions.currentIndexChanged.connect(lambda _: motion_setter(motions.currentData(Qt.ItemDataRole.UserRole)))
+        top.addWidget(motions)
 
-            top.addSpacing(32)
+        top.addSpacing(32)
 
-            bl_label = QLabel("Backlight")
-            top.addWidget(bl_label)
+        bl_label = QLabel("Backlight")
+        top.addWidget(bl_label)
 
-            bl_slider = MouseCheckSlider(Qt.Orientation.Horizontal)
-            bl_slider.setMinimum(0)
-            bl_slider.setMaximum(100)
-            bl_slider.valueChanged.connect(lambda value: backlight_setter(value / 100))
-            top.addWidget(bl_slider)
+        bl_slider = MouseCheckSlider(Qt.Orientation.Horizontal)
+        bl_slider.setMinimum(0)
+        bl_slider.setMaximum(100)
+        bl_slider.valueChanged.connect(lambda value: backlight_setter(value / 100))
+        top.addWidget(bl_slider)
 
-            top.addStretch()
+        top.addStretch()
 
-            return widget, skins, motions, bl_slider
-
+        return widget, skins, motions, bl_slider
 
     def fpv_new_frame(self):
         self.fpv_fps.setText(f"{round(1 / (time.time() - self.fpv_last_frame))} FPS")
@@ -653,7 +658,7 @@ class MainWindow(QMainWindow):
         self.fpv.mjpeg_thread.terminate()
         self.fpv.mjpeg_thread.start()
 
-    def plot_manager_layout(self, settings: QSettings, plots: list[LivePlot]):
+    def plot_manager_layout(self, _settings: QSettings, _plots: list[LivePlot]):
         layout = QVBoxLayout()
 
         list_view = QListWidget()
@@ -694,12 +699,14 @@ class MainWindow(QMainWindow):
         for plot in self.plots:
             plot_data = []
             for key, value in plot.get_data_sources().items():
-                plot_data.append({"name": key, "color": value["color"], "width": value["width"], "enabled": value["enabled"]})
+                plot_data.append(
+                    {"name": key, "color": value["color"], "width": value["width"], "enabled": value["enabled"]}
+                )
             data.append(plot_data)
         self.settings.setValue("plot/settings", json.dumps({"plots": data}))
 
     def add_plot(self, title="Plot"):
-        dock = QDockWidget("Plot")
+        dock = QDockWidget(title)
         self.plot_docks.append(dock)
         dock.setFeatures(
             QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
@@ -727,7 +734,11 @@ class MainWindow(QMainWindow):
         plot.add_data_source("IMU/Accel/Roll", lambda _: self.robot.get_state().imu.accel[2], "y")
 
         for i in range(len(self.robot.get_state().battery.voltages)):
-            plot.add_data_source(f"Battery/Voltage{i+1}", partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]), ['r', 'g', 'b', 'm'][i%3])
+            plot.add_data_source(
+                f"Battery/Voltage{i+1}",
+                partial(lambda _, idx=i: self.robot.get_state().battery.voltages[idx]),
+                ["r", "g", "b", "m"][i % 3],
+            )
 
         plot.add_data_source("Enviro/Temp", lambda _: self.robot.get_state().enviro.temperature, "#e91e63")
         plot.add_data_source("Enviro/Humi", lambda _: self.robot.get_state().enviro.humidity, "#3f51b5")
@@ -746,15 +757,14 @@ class MainWindow(QMainWindow):
         plot.add_data_source("Drive/LeftWatts", lambda _: self.robot.get_state().motion.watts[0], "#795548")
         plot.add_data_source("Drive/RightWatts", lambda _: self.robot.get_state().motion.watts[1], "#009688")
 
-
         try:
-            settings: list = json.loads(self.settings.value("plot/settings", type=str))["plots"] # type: ignore
+            settings: list = json.loads(self.settings.value("plot/settings", type=str))["plots"]  # type: ignore
             if len(settings) >= len(self.plots):
                 for item in settings[len(self.plots) - 1]:
                     if item["name"] in plot.get_data_sources():
                         plot.edit_pen_color(item["name"], item["color"])
                         plot.edit_pen_width(item["name"], item["width"])
-                        plot.edit_enabled(item["name"], item["enabled"])
+                        plot.edit_enabled(item["name"], enabled=item["enabled"])
         except (ValueError, IndexError) as e:
             logger.error(f"Failed to load plot settings, selecting defaults, {e!r}")
 
@@ -1231,9 +1241,9 @@ class MainWindow(QMainWindow):
             page.setEnabled(True)
 
         self.eyes = kevinbotlib.eyes.MqttEyes(self.robot)
-        self.eyes.register_callback(kevinbotlib.enums.EyeCallbackType.Backlight, self.update_eye_backlight)
-        self.eyes.register_callback(kevinbotlib.enums.EyeCallbackType.Motion, self.update_eye_motion)
-        self.eyes.register_callback(kevinbotlib.enums.EyeCallbackType.Skin, self.update_eye_skin)
+        self.eyes.register_callback(kevinbotlib.EyeCallbackType.Backlight, self.update_eye_backlight)
+        self.eyes.register_callback(kevinbotlib.EyeCallbackType.Motion, self.update_eye_motion)
+        self.eyes.register_callback(kevinbotlib.EyeCallbackType.Skin, self.update_eye_skin)
         self.eyes_skin.setCurrentIndex(self.eyes_skin.findData(self.eyes.get_state().settings.states.page))
         self.eyes_motion.setCurrentIndex(self.eyes_motion.findData(self.eyes.get_state().settings.states.motion))
         self.eyes_backlight.blockSignals(True)
@@ -1246,12 +1256,12 @@ class MainWindow(QMainWindow):
             self.eyes_backlight.setValue(round(value * 100))
             self.eyes_backlight.blockSignals(False)
 
-    def update_eye_motion(self, value: kevinbotlib.enums.EyeMotion):
+    def update_eye_motion(self, value: kevinbotlib.EyeMotion):
         self.eyes_motion.blockSignals(True)
         self.eyes_motion.setCurrentIndex(self.eyes_motion.findData(value, Qt.ItemDataRole.UserRole))
         self.eyes_motion.blockSignals(False)
 
-    def update_eye_skin(self, value: kevinbotlib.enums.EyeSkin):
+    def update_eye_skin(self, value: kevinbotlib.EyeSkin):
         self.eyes_skin.blockSignals(True)
         self.eyes_skin.setCurrentIndex(self.eyes_skin.findData(value, Qt.ItemDataRole.UserRole))
         self.eyes_skin.blockSignals(False)

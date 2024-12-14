@@ -12,11 +12,14 @@ class NoFocusDelegate(QStyledItemDelegate):
         option.state = QStyle.StateFlag.State_Enabled  # type: ignore
         super().paint(painter, option, index)
 
+
 class ComboBoxNoTextDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex) -> None:
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
+    ) -> None:
         # Create a copy of the style option
         opt = option
 

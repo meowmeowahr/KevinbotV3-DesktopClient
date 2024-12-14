@@ -282,16 +282,19 @@ class ColorBlock(QFrame):
         color_str = _rgb2hex(rgb)
         self.setStyleSheet(f"background-color: #{color_str};")
 
+
 class MouseCheckSlider(QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.mouse_down = Qt.MouseButton.NoButton
 
+    @override
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         self.mouse_down = ev.button()
         super().mousePressEvent(ev)
 
+    @override
     def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
         self.mouse_down = Qt.MouseButton.NoButton
         super().mouseReleaseEvent(ev)

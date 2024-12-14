@@ -81,6 +81,7 @@ class DataSourceCheckBox(QFrame):
 class DataSourceManagerItem(QFrame):
     color_changed = Signal(str, str)
     width_changed = Signal(str, int)
+
     def __init__(self, source_name: str, color: str, width: int) -> None:
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -102,9 +103,7 @@ class DataSourceManagerItem(QFrame):
 
         self.color = QComboBox()
 
-        view = QTableView(
-            self.color
-        )
+        view = QTableView(self.color)
         view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.color.setView(view)
 
@@ -118,7 +117,26 @@ class DataSourceManagerItem(QFrame):
         self.color.setFixedSize(QSize(48, 36))
         self.color.setItemDelegate(ComboBoxNoTextDelegate())
 
-        for col in ["r", "g", "b", "m", "c", "y", "#e91e63", "#3f51b5", "#cddc39", "#ff9800", "#607d8b", "#03a9f4", "#ff5722", "#2196f3", "#8bc34a", "#673ab7", "#795548", "#009688"]:
+        for col in [
+            "r",
+            "g",
+            "b",
+            "m",
+            "c",
+            "y",
+            "#e91e63",
+            "#3f51b5",
+            "#cddc39",
+            "#ff9800",
+            "#607d8b",
+            "#03a9f4",
+            "#ff5722",
+            "#2196f3",
+            "#8bc34a",
+            "#673ab7",
+            "#795548",
+            "#009688",
+        ]:
             pixmap = QPixmap(32, 32)
             pixmap.fill(QColor(color_string_to_hex(col)))
             self.color.addItem(QIcon(pixmap), col, col)
@@ -274,7 +292,9 @@ class LivePlot(QMainWindow):
         if was_active:
             self.timer.start()
 
-    def add_data_source(self, name: str, func: Callable[[float], float], color: str = "w", width: int = 2, *, enabled = False) -> None:
+    def add_data_source(
+        self, name: str, func: Callable[[float], float], color: str = "w", width: int = 2, *, enabled=False
+    ) -> None:
         """
         Add a new data source to the plot.
 
@@ -335,7 +355,7 @@ class LivePlot(QMainWindow):
         self.data_sources[name]["width"] = width
         self.plot_data_items[name].setPen(pg.mkPen(self.data_sources[name]["color"], width=width))
 
-    def edit_enabled(self, name: str, enabled: bool):
+    def edit_enabled(self, name: str, *, enabled: bool):
         """
         Edit the enabled state of a data source.
 
@@ -345,7 +365,6 @@ class LivePlot(QMainWindow):
         """
         self.data_sources[name]["enabled"] = enabled
         self.source_checkboxes[name].setChecked(enabled)
-
 
     def remove_data_source(self, name: str) -> None:
         """

@@ -2,7 +2,7 @@
 Useful delegates for Qt
 """
 
-from PySide6.QtCore import QModelIndex
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QApplication, QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
@@ -16,7 +16,7 @@ class ComboBoxNoTextDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex) -> None:
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex) -> None:
         # Create a copy of the style option
         opt = option
 

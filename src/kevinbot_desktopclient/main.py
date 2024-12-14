@@ -168,6 +168,7 @@ class ConnectionWorker(QRunnable):
                 ConnectionRefusedError,
                 kevinbotlib.exceptions.HandshakeTimeoutException,
                 socket.gaierror,
+                TimeoutError,
             ) as e:
                 logger.error(f"Failed to connect to MQTT broker: {e!r}")
                 self.signals.connection_error.emit(e, traceback.format_exc())

@@ -1,4 +1,5 @@
 import json
+import multiprocessing
 import os
 import platform
 import queue
@@ -21,7 +22,7 @@ import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import shortuuid
-from Custom_Widgets.QCustomModals import QCustomModals
+from pyqttoast import Toast, ToastPreset, ToastPosition
 from loguru import logger
 from PySide6.QtCore import (
     QBuffer,
@@ -581,6 +582,8 @@ class MainWindow(QMainWindow):
 
         for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
             page.setEnabled(False)
+
+        Toast.setPosition(ToastPosition.BOTTOM_MIDDLE)
 
         self.show()
 
@@ -1165,6 +1168,7 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drivecmd(self, controller: pyglet.input.Controller, _xvalue, _yvalue):
+        print("drive")
         if self.state.app_state in [
             AppState.ESTOPPED,
             AppState.NO_COMMUNICATIONS,
@@ -1307,18 +1311,15 @@ class MainWindow(QMainWindow):
         controllers.map_stick(controller, self.controller_stick_action)
         controllers.map_pov(controller, self.controller_dpad_action)
         logger.success(f"Controller connected: {controller.name}")
-        modal = QCustomModals.InformationModal(
+        modal = Toast(
             title="Controllers",
             parent=self.main,
             position="top-right",
-            description="Controller has been connected",
-            isClosable=True,
-            modalIcon=qta.icon("mdi6.information", color="#0f0f0f").pixmap(QSize(32, 32)),
-            closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
-            duration=3000,
         )
-        modal.setStyleSheet("* { border: none; background-color: #b3e5fc; color: #0f0f0f; }")
-        modal.setParent(self)
+        modal.setTitle("Controllers")
+        modal.setText("Controller has been connected")
+        modal.setDuration(3000)
+        modal.applyPreset(ToastPreset.SUCCESS_DARK)
         modal.show()
 
     def controller_refresh_handler(self, controller: list[pyglet.input.Controller]):
@@ -1329,18 +1330,15 @@ class MainWindow(QMainWindow):
 
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")
-        modal = QCustomModals.InformationModal(
+        modal = Toast(
             title="Controllers",
             parent=self.main,
             position="top-right",
-            description="Controller has disconnected",
-            isClosable=True,
-            modalIcon=qta.icon("mdi6.alert-decagram", color="#0f0f0f").pixmap(QSize(32, 32)),
-            closeIcon=qta.icon("mdi6.close", color="#0f0f0f").pixmap(QSize(32, 32)),
-            duration=3000,
         )
-        modal.setStyleSheet("* { border: none; background-color: #ffecb3; color: #0f0f0f; }")
-        modal.setParent(self)
+        modal.setTitle("Controllers")
+        modal.setText("Controller has disconnected")
+        modal.setDuration(3000)
+        modal.applyPreset(ToastPreset.WARNING_DARK)
         modal.show()
 
     def controller_stick_action(

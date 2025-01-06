@@ -583,7 +583,7 @@ class MainWindow(QMainWindow):
         for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
             page.setEnabled(False)
 
-        Toast.setPosition(ToastPosition.BOTTOM_MIDDLE)
+        Toast.setPosition(ToastPosition.TOP_RIGHT)
 
         self.show()
 
@@ -1312,9 +1312,7 @@ class MainWindow(QMainWindow):
         controllers.map_pov(controller, self.controller_dpad_action)
         logger.success(f"Controller connected: {controller.name}")
         modal = Toast(
-            title="Controllers",
             parent=self.main,
-            position="top-right",
         )
         modal.setTitle("Controllers")
         modal.setText("Controller has been connected")
@@ -1331,9 +1329,7 @@ class MainWindow(QMainWindow):
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")
         modal = Toast(
-            title="Controllers",
             parent=self.main,
-            position="top-right",
         )
         modal.setTitle("Controllers")
         modal.setText("Controller has disconnected")

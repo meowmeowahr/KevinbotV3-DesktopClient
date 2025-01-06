@@ -679,6 +679,7 @@ class MainWindow(QMainWindow):
             list_view.addItem(item)
 
             source_manager = DataSourceManagerItem(name, data["color"], data["width"])
+            source_manager.check.setChecked(self.plots[0].get_data_sources()[name]["enabled"])
             source_manager.check.stateChanged.connect(partial(self.update_plots_enabled, name))
             source_manager.color_changed.connect(self.update_plots_color)
             source_manager.width_changed.connect(self.update_plots_width)

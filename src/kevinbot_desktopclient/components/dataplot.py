@@ -12,13 +12,11 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFrame,
-    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QMainWindow,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QTableView,
     QVBoxLayout,
@@ -91,6 +89,10 @@ class DataSourceManagerItem(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
+        self.check = QCheckBox()
+        self.check.setStyleSheet("QCheckBox::indicator { width: 20px; height: 20px; }")
+        layout.addWidget(self.check)
+
         self.label = QLabel(source_name)
         layout.addWidget(self.label)
 
@@ -161,7 +163,6 @@ class LivePlot(QMainWindow):
 
         # Initialize data structures for dynamic sources
         self.data_sources: dict[str, dict] = {}
-        self.source_checkboxes: dict[str, DataSourceCheckBox] = {}
         self.data_y: dict[str, list[float]] = {}
         self.plot_data_items: dict[str, pg.PlotDataItem] = {}
 
@@ -220,33 +221,6 @@ class LivePlot(QMainWindow):
 
         main_layout = QHBoxLayout()
         root_layout.addLayout(main_layout)
-
-        # Sidebar layout
-        sidebar = QWidget()
-        sidebar_layout = QVBoxLayout(sidebar)
-
-        # Data sources
-        self.source_group = QGroupBox("Data Sources")
-        sidebar_layout.addWidget(self.source_group, 3)
-
-        self.source_root_layout = QVBoxLayout()
-        self.source_root_layout.setContentsMargins(0, 4, 0, 0)
-        self.source_group.setLayout(self.source_root_layout)
-
-        self.source_scroll = QScrollArea()
-        self.source_scroll.setWidgetResizable(True)
-        self.source_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.source_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.source_root_layout.addWidget(self.source_scroll)
-
-        self.source_scroll_widget = QWidget()
-        self.source_scroll.setWidget(self.source_scroll_widget)
-
-        self.source_layout = QVBoxLayout()
-        self.source_scroll_widget.setLayout(self.source_layout)
-
-        # Add sidebar to main layout
-        main_layout.addWidget(sidebar)
 
         # Initialize the plot widget
         self.plot_widget = pg.PlotWidget()
@@ -310,24 +284,9 @@ class LivePlot(QMainWindow):
         # Add the source function
         self.data_sources[name] = {"func": func, "color": color, "width": width, "enabled": enabled}
 
-        # Create a checkbox for the source
-        checkbox = DataSourceCheckBox(name, color)
-        if enabled:
-            checkbox.setChecked(True)
-        checkbox.stateChanged.connect(lambda: self._update_selected_source(name))
-        self.source_checkboxes[name] = checkbox
-        self.source_layout.addWidget(checkbox)
-
         # Initialize data structures for the new source
         self.data_y[name] = []
         self.plot_data_items[name] = self.plot_widget.plot(pen=pg.mkPen(color, width=width))
-
-        self.source_group.setFixedWidth(self.source_group.sizeHint().width() + 28)
-
-    def _update_selected_source(self, name: str) -> None:
-        """Update the visibility of a data source."""
-        self.data_sources[name]["enabled"] = self.source_checkboxes[name].isChecked()
-        self.on_data_source_selection_changed.emit(name, self.source_checkboxes[name].isChecked())
 
     def get_data_sources(self):
         return self.data_sources
@@ -342,7 +301,6 @@ class LivePlot(QMainWindow):
         """
         self.data_sources[name]["color"] = color
         self.plot_data_items[name].setPen(pg.mkPen(color, width=self.data_sources[name]["width"]))
-        self.source_checkboxes[name].set_color(color)
 
     def edit_pen_width(self, name: str, width: int):
         """
@@ -364,7 +322,6 @@ class LivePlot(QMainWindow):
             enabled: The new enabled state
         """
         self.data_sources[name]["enabled"] = enabled
-        self.source_checkboxes[name].setChecked(enabled)
 
     def remove_data_source(self, name: str) -> None:
         """
@@ -376,10 +333,6 @@ class LivePlot(QMainWindow):
         if name not in self.data_sources:
             msg = f"Data source '{name}' does not exist"
             raise ValueError(msg)
-
-        # Remove the checkbox
-        self.source_checkboxes[name].deleteLater()
-        del self.source_checkboxes[name]
 
         # Remove the data
         del self.data_sources[name]

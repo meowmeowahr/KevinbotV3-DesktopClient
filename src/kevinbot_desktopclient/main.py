@@ -679,11 +679,19 @@ class MainWindow(QMainWindow):
             list_view.addItem(item)
 
             source_manager = DataSourceManagerItem(name, data["color"], data["width"])
+            source_manager.check.stateChanged.connect(partial(self.update_plots_enabled, name))
             source_manager.color_changed.connect(self.update_plots_color)
             source_manager.width_changed.connect(self.update_plots_width)
             list_view.setItemWidget(item, source_manager)
 
         return layout
+
+    def update_plots_enabled(self, name: str, enabled: bool):
+        for plot in self.plots:
+            if name in plot.get_data_sources():
+                plot.edit_enabled(name, enabled=enabled)
+        self.save_plot_settings()
+
 
     def update_plots_color(self, name: str, color: str):
         for plot in self.plots:

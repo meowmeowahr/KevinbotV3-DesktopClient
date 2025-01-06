@@ -751,8 +751,8 @@ class MainWindow(QMainWindow):
         plot.add_data_source("Thermo/RightMotor", lambda _: self.robot.get_state().thermal.right_motor, "#607d8b")
         plot.add_data_source("Thermo/Interval", lambda _: self.robot.get_state().thermal.internal, "#03a9f4")
 
-        plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.left_power, "#ff5722")
-        plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.right_power, "#2196f3")
+        plot.add_data_source("Drive/LeftTarget", lambda _: self.robot.get_state().motion.powers[0], "#ff5722")
+        plot.add_data_source("Drive/RightTarget", lambda _: self.robot.get_state().motion.powers[1], "#2196f3")
 
         plot.add_data_source("Drive/LeftAmps", lambda _: self.robot.get_state().motion.amps[0], "#8bc34a")
         plot.add_data_source("Drive/RightAmps", lambda _: self.robot.get_state().motion.amps[1], "#673ab7")
@@ -1168,7 +1168,6 @@ class MainWindow(QMainWindow):
 
     # * Drive
     def drivecmd(self, controller: pyglet.input.Controller, _xvalue, _yvalue):
-        print("drive")
         if self.state.app_state in [
             AppState.ESTOPPED,
             AppState.NO_COMMUNICATIONS,

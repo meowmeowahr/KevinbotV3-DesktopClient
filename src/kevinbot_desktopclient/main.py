@@ -1,5 +1,4 @@
 import json
-import multiprocessing
 import os
 import platform
 import queue
@@ -469,29 +468,15 @@ class MainWindow(QMainWindow):
         self.connect_indicator_led.set_color("#f44336")
         self.indicators_grid.addWidget(self.connect_indicator_led, 0, 0)
 
-        self.systick_indicator_led = ColorBlock()
-        self.systick_indicator_led.set_color("#f44336")
-        self.indicators_grid.addWidget(self.systick_indicator_led, 1, 0)
-
-        self.coretick_indicator_led = ColorBlock()
-        self.coretick_indicator_led.set_color("#f44336")
-        self.indicators_grid.addWidget(self.coretick_indicator_led, 2, 0)
-
         self.controller_led = ColorBlock()
         self.controller_led.set_color("#f44336")
-        self.indicators_grid.addWidget(self.controller_led, 3, 0)
+        self.indicators_grid.addWidget(self.controller_led, 1, 0)
 
         self.connect_indicator_label = QLabel("Connected")
         self.indicators_grid.addWidget(self.connect_indicator_label, 0, 1)
 
-        self.systick_indicator_label = QLabel("Sys Tick")
-        self.indicators_grid.addWidget(self.systick_indicator_label, 1, 1)
-
-        self.coretick_indicator_led_label = QLabel("Core Tick")
-        self.indicators_grid.addWidget(self.coretick_indicator_led_label, 2, 1)
-
         self.controller_indicator_label = QLabel("Controller")
-        self.indicators_grid.addWidget(self.controller_indicator_label, 3, 1)
+        self.indicators_grid.addWidget(self.controller_indicator_label, 1, 1)
 
         # * Plot
         self.plot_docks: list[QDockWidget] = []
@@ -584,6 +569,7 @@ class MainWindow(QMainWindow):
             page.setEnabled(False)
 
         Toast.setPosition(ToastPosition.TOP_RIGHT)
+        Toast.setPositionRelativeToWidget(self)
 
         self.show()
 
@@ -591,7 +577,7 @@ class MainWindow(QMainWindow):
         if self.eyes:
             self.eyes.set_backlight(value)
 
-    def set_eye_skin(self, skin: kevinbotlib.EyeSkin):
+    def set_eye_skin(self, skin: kevinbotlib.EyeSkin) -> None:
         if self.eyes:
             self.eyes.set_skin(skin)
 

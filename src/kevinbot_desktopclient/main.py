@@ -49,8 +49,10 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLCDNumber,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -67,8 +69,6 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QGroupBox,
-    QLCDNumber,
 )
 
 from kevinbot_desktopclient import constants
@@ -84,7 +84,14 @@ from kevinbot_desktopclient.enums import Cardinal
 from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
 from kevinbot_desktopclient.ui.plots import BatteryGraph, PovVisual, StickVisual
 from kevinbot_desktopclient.ui.util import add_tabs
-from kevinbot_desktopclient.ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, KBModalBar, MouseCheckSlider, ToastManager, WarningBar
+from kevinbot_desktopclient.ui.widgets import (
+    AuthorWidget,
+    ColorBlock,
+    CustomTabWidget,
+    MouseCheckSlider,
+    ToastManager,
+    WarningBar,
+)
 
 __version__ = "0.0.0"
 __authors__ = [
@@ -705,12 +712,11 @@ class MainWindow(QMainWindow):
 
         return layout
 
-    def update_plots_enabled(self, name: str, enabled: bool):
+    def update_plots_enabled(self, name: str, enabled: bool):  # noqa: FBT001
         for plot in self.plots:
             if name in plot.get_data_sources():
                 plot.edit_enabled(name, enabled=enabled)
         self.save_plot_settings()
-
 
     def update_plots_color(self, name: str, color: str):
         for plot in self.plots:
@@ -1202,7 +1208,7 @@ class MainWindow(QMainWindow):
             AppState.CONNECTING,
         ]:
             return
-        
+
         if not self.robot.get_state().enabled:
             return
 

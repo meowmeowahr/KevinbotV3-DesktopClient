@@ -4,19 +4,19 @@ from functools import partial
 from typing import override
 
 import qtawesome as qta
-from PySide6.QtCore import QSize, Qt, QUrl, Signal, QPropertyAnimation, QEasingCurve, QPoint, QTimer, QObject
-from PySide6.QtGui import QDesktopServices, QFont, QMouseEvent, QResizeEvent, QPixmap
+from PySide6.QtCore import QEasingCurve, QObject, QPoint, QPropertyAnimation, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QFont, QMouseEvent, QPixmap, QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
+    QMainWindow,
     QSlider,
     QStackedWidget,
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QMainWindow,
-    QGraphicsOpacityEffect,
 )
 
 from kevinbot_desktopclient.ui.util import initials as str2initials
@@ -301,6 +301,7 @@ class MouseCheckSlider(QSlider):
         self.mouse_down = Qt.MouseButton.NoButton
         super().mouseReleaseEvent(ev)
 
+
 class KBModalBar(QFrame):
     def __init__(
         self,
@@ -308,11 +309,12 @@ class KBModalBar(QFrame):
         width=400,
         height=64,
         gap=16,
-        centerText=True,
+        *,
+        center_text=True,
         opacity=90,
-        bgColor=None,
+        bg=None,
     ):
-        super(KBModalBar, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         self.gap = gap
 
@@ -331,8 +333,8 @@ class KBModalBar(QFrame):
             int(parent.height() - height - gap),
         )
 
-        if bgColor:
-            self.setStyleSheet(f"background-color: {bgColor}")
+        if bg:
+            self.setStyleSheet(f"background-color: {bg}")
 
         self.__layout = QHBoxLayout()
         self.setLayout(self.__layout)
@@ -340,7 +342,7 @@ class KBModalBar(QFrame):
         self.__icon = QLabel()
         self.__layout.addWidget(self.__icon)
 
-        if centerText:
+        if center_text:
             self.__layout.addStretch()
 
         self.__labels_layout = QVBoxLayout()
@@ -356,16 +358,16 @@ class KBModalBar(QFrame):
 
         self.hide()
 
-    def setTitle(self, text):
+    def set_title(self, text):
         self.__name.setText(text)
 
-    def setDescription(self, text):
+    def set_description(self, text):
         self.__description.setText(text)
 
-    def setPixmap(self, pixmap):
+    def set_pixmap(self, pixmap):
         self.__icon.setPixmap(pixmap)
 
-    def close_toast(self, closeSpeed=750):
+    def close_toast(self, speed=750):
         self.__anim = QPropertyAnimation(self, b"pos")
         self.__anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.__anim.setEndValue(
@@ -374,17 +376,16 @@ class KBModalBar(QFrame):
                 self.parent().height() + self.height() + 25,
             )
         )
-        self.__anim.setDuration(closeSpeed)
+        self.__anim.setDuration(speed)
         self.__anim.start()
 
         timer = QTimer()
-        timer.singleShot(closeSpeed, self.deleteLater)
+        timer.singleShot(speed, self.deleteLater)
 
     def get_index(self):
         return self.pos_index
 
     def pop(self, pop_speed=750, easing_curve=QEasingCurve.Type.OutCubic, pos_index=0):
-
         self.pos_index = pos_index + 1
 
         self.move(
@@ -404,6 +405,7 @@ class KBModalBar(QFrame):
         self.__anim.setDuration(pop_speed)
         self.__anim.start()
 
+
 def next_index(lst):
     """
     Returns the smallest non-negative integer not present in the list.
@@ -416,15 +418,15 @@ def next_index(lst):
     """
     if not lst:
         return 0
-    
+
     # Convert the list to a set for efficient lookup
     integer_set = set(lst)
-    
+
     # Start from 0 and check for the first missing integer
     next_int = 0
     while next_int in integer_set:
         next_int += 1
-    
+
     return next_int
 
 
@@ -434,11 +436,13 @@ class ToastManager(QObject):
 
         self.toasts = {}
 
-    def pop_toast(self, title: str, description: str, pixmap: QPixmap | None = None, duration: int = 3000, pop_speed: int = 500):
-        toast = KBModalBar(self.parent(), centerText=False)
-        toast.setTitle(title)
-        toast.setDescription(description)
-        toast.setPixmap(pixmap)
+    def pop_toast(
+        self, title: str, description: str, pixmap: QPixmap | None = None, duration: int = 3000, pop_speed: int = 500
+    ):
+        toast = KBModalBar(self.parent(), center_text=False)
+        toast.set_title(title)
+        toast.set_description(description)
+        toast.set_pixmap(pixmap)
         toast.pop(pop_speed, pos_index=next_index(list(self.toasts.values())))
         self.toasts[toast] = next_index(list(self.toasts.values()))
 

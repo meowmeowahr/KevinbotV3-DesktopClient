@@ -21,7 +21,6 @@ import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
 import shortuuid
-from pyqttoast import Toast, ToastPreset, ToastPosition
 from loguru import logger
 from PySide6.QtCore import (
     QBuffer,
@@ -85,7 +84,7 @@ from kevinbot_desktopclient.enums import Cardinal
 from kevinbot_desktopclient.ui.mjpeg import MJPEGViewer
 from kevinbot_desktopclient.ui.plots import BatteryGraph, PovVisual, StickVisual
 from kevinbot_desktopclient.ui.util import add_tabs
-from kevinbot_desktopclient.ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, MouseCheckSlider, WarningBar
+from kevinbot_desktopclient.ui.widgets import AuthorWidget, ColorBlock, CustomTabWidget, KBModalBar, MouseCheckSlider, ToastManager, WarningBar
 
 __version__ = "0.0.0"
 __authors__ = [
@@ -601,8 +600,8 @@ class MainWindow(QMainWindow):
         for page in [self.right_tabs.widget(i) for i in range(self.right_tabs.count())]:
             page.setEnabled(False)
 
-        Toast.setPosition(ToastPosition.TOP_RIGHT)
-        Toast.setPositionRelativeToWidget(self)
+        # * Modal
+        self.modal_bar = ToastManager(self)
 
         self.show()
 
@@ -1348,14 +1347,7 @@ class MainWindow(QMainWindow):
         controllers.map_stick(controller, self.controller_stick_action)
         controllers.map_pov(controller, self.controller_dpad_action)
         logger.success(f"Controller connected: {controller.name}")
-        modal = Toast(
-            parent=self.main,
-        )
-        modal.setTitle("Controllers")
-        modal.setText("Controller has been connected")
-        modal.setDuration(3000)
-        modal.applyPreset(ToastPreset.SUCCESS_DARK)
-        modal.show()
+        self.modal_bar.pop_toast("Controllers", "Controller connected", qta.icon("mdi6.controller").pixmap(32, 32))
 
     def controller_refresh_handler(self, controller: list[pyglet.input.Controller]):
         logger.debug("Controllers refreshed")
@@ -1365,14 +1357,7 @@ class MainWindow(QMainWindow):
 
     def controller_disconnected_handler(self, controller: pyglet.input.Controller):
         logger.warning(f"Controller disconnected: {controller.name}")
-        modal = Toast(
-            parent=self.main,
-        )
-        modal.setTitle("Controllers")
-        modal.setText("Controller has disconnected")
-        modal.setDuration(3000)
-        modal.applyPreset(ToastPreset.WARNING_DARK)
-        modal.show()
+        self.modal_bar.pop_toast("Controllers", "Controller disconnected", qta.icon("mdi6.controller").pixmap(32, 32))
 
     def controller_stick_action(
         self,

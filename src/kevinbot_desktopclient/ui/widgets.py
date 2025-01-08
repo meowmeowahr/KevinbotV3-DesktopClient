@@ -4,8 +4,8 @@ from functools import partial
 from typing import override
 
 import qtawesome as qta
-from PySide6.QtCore import QSize, Qt, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QMouseEvent, QResizeEvent
+from PySide6.QtCore import QSize, Qt, QUrl, Signal, QPropertyAnimation, QEasingCurve, QPoint, QTimer, QObject
+from PySide6.QtGui import QDesktopServices, QFont, QMouseEvent, QResizeEvent, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QMainWindow,
+    QGraphicsOpacityEffect,
 )
 
 from kevinbot_desktopclient.ui.util import initials as str2initials
@@ -298,3 +300,152 @@ class MouseCheckSlider(QSlider):
     def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
         self.mouse_down = Qt.MouseButton.NoButton
         super().mouseReleaseEvent(ev)
+
+class KBModalBar(QFrame):
+    def __init__(
+        self,
+        parent: QMainWindow,
+        width=400,
+        height=64,
+        gap=16,
+        centerText=True,
+        opacity=90,
+        bgColor=None,
+    ):
+        super(KBModalBar, self).__init__(parent=parent)
+
+        self.gap = gap
+
+        self.setObjectName("Kevinbot3_RemoteUI_ModalBar")
+        self.setFrameStyle(QFrame.Shape.Box)
+        self.setFixedSize(QSize(width, height))
+        self.setParent(parent)
+
+        op = QGraphicsOpacityEffect(self)
+        op.setOpacity(opacity / 100)  # 0 to 1 will cause the fade effect to kick in
+        self.setGraphicsEffect(op)
+        self.setAutoFillBackground(True)
+
+        self.move(
+            int(parent.width() / 2 - self.width() / 2),
+            int(parent.height() - height - gap),
+        )
+
+        if bgColor:
+            self.setStyleSheet(f"background-color: {bgColor}")
+
+        self.__layout = QHBoxLayout()
+        self.setLayout(self.__layout)
+
+        self.__icon = QLabel()
+        self.__layout.addWidget(self.__icon)
+
+        if centerText:
+            self.__layout.addStretch()
+
+        self.__labels_layout = QVBoxLayout()
+        self.__layout.addLayout(self.__labels_layout)
+
+        self.__name = QLabel()
+        self.__labels_layout.addWidget(self.__name)
+
+        self.__description = QLabel()
+        self.__labels_layout.addWidget(self.__description)
+
+        self.__layout.addStretch()
+
+        self.hide()
+
+    def setTitle(self, text):
+        self.__name.setText(text)
+
+    def setDescription(self, text):
+        self.__description.setText(text)
+
+    def setPixmap(self, pixmap):
+        self.__icon.setPixmap(pixmap)
+
+    def close_toast(self, closeSpeed=750):
+        self.__anim = QPropertyAnimation(self, b"pos")
+        self.__anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.__anim.setEndValue(
+            QPoint(
+                int(self.parent().width() / 2 - self.width() / 2),
+                self.parent().height() + self.height() + 25,
+            )
+        )
+        self.__anim.setDuration(closeSpeed)
+        self.__anim.start()
+
+        timer = QTimer()
+        timer.singleShot(closeSpeed, self.deleteLater)
+
+    def get_index(self):
+        return self.pos_index
+
+    def pop(self, pop_speed=750, easing_curve=QEasingCurve.Type.OutCubic, pos_index=0):
+
+        self.pos_index = pos_index + 1
+
+        self.move(
+            int(self.parent().width() / 2 - self.width() / 2),
+            self.parent().height() + self.height(),
+        )
+        self.show()
+
+        self.__anim = QPropertyAnimation(self, b"pos")
+        self.__anim.setEasingCurve(easing_curve)
+        self.__anim.setEndValue(
+            QPoint(
+                int(self.parent().width() / 2 - self.width() / 2),
+                int(self.parent().height() - (self.height() + self.gap) * self.pos_index),
+            )
+        )
+        self.__anim.setDuration(pop_speed)
+        self.__anim.start()
+
+def next_index(lst):
+    """
+    Returns the smallest non-negative integer not present in the list.
+
+    Parameters:
+        lst (list): A list of integers.
+
+    Returns:
+        int: The next available integer.
+    """
+    if not lst:
+        return 0
+    
+    # Convert the list to a set for efficient lookup
+    integer_set = set(lst)
+    
+    # Start from 0 and check for the first missing integer
+    next_int = 0
+    while next_int in integer_set:
+        next_int += 1
+    
+    return next_int
+
+
+class ToastManager(QObject):
+    def __init__(self, parent: QMainWindow) -> None:
+        super().__init__(parent)
+
+        self.toasts = {}
+
+    def pop_toast(self, title: str, description: str, pixmap: QPixmap | None = None, duration: int = 3000, pop_speed: int = 500):
+        toast = KBModalBar(self.parent(), centerText=False)
+        toast.setTitle(title)
+        toast.setDescription(description)
+        toast.setPixmap(pixmap)
+        toast.pop(pop_speed, pos_index=next_index(list(self.toasts.values())))
+        self.toasts[toast] = next_index(list(self.toasts.values()))
+
+        QTimer.singleShot(duration, lambda: self.close_toast(toast))
+
+        return toast
+
+    def close_toast(self, toast: KBModalBar):
+        toast.close_toast()
+        self.toasts.pop(toast)

@@ -68,6 +68,8 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QGroupBox,
+    QLCDNumber,
 )
 
 from kevinbot_desktopclient import constants
@@ -548,6 +550,37 @@ class MainWindow(QMainWindow):
         self.fpv_last_frame = time.time()
         self.fpv.mjpeg_thread.frame_received.connect(self.fpv_new_frame)
         self.left_split_layout.addWidget(self.fpv, 2)
+
+        # * Mid View
+        self.mid_split = QWidget()
+        self.splitter.addWidget(self.mid_split)
+
+        self.mid_layout = QHBoxLayout()
+        self.mid_split.setLayout(self.mid_layout)
+
+        self.motor_left_box = QGroupBox("Left")
+        self.mid_layout.addWidget(self.motor_left_box)
+
+        self.motor_left_layout = QGridLayout()
+        self.motor_left_box.setLayout(self.motor_left_layout)
+
+        self.motor_left_speed = QLCDNumber()
+        self.motor_left_speed.setDigitCount(4)
+        self.motor_left_speed.display("----")
+        self.motor_left_speed.setFrameStyle(QFrame.Shape.NoFrame)
+        self.motor_left_layout.addWidget(self.motor_left_speed)
+
+        self.motor_right_box = QGroupBox("Right")
+        self.mid_layout.addWidget(self.motor_right_box)
+
+        self.motor_right_layout = QGridLayout()
+        self.motor_right_box.setLayout(self.motor_right_layout)
+
+        self.motor_right_speed = QLCDNumber()
+        self.motor_right_speed.setDigitCount(4)
+        self.motor_right_speed.display("----")
+        self.motor_right_speed.setFrameStyle(QFrame.Shape.NoFrame)
+        self.motor_right_layout.addWidget(self.motor_right_speed)
 
         # * Main View
 
@@ -1170,6 +1203,9 @@ class MainWindow(QMainWindow):
             AppState.CONNECTING,
         ]:
             return
+        
+        if not self.robot.get_state().enabled:
+            return
 
         if controller == self.controller_manager.get_controllers()[0]:
 
@@ -1191,6 +1227,9 @@ class MainWindow(QMainWindow):
             self.state.right_power = right_power
 
             self.drive.drive_at_power(self.state.left_power, self.state.right_power)
+
+            self.motor_left_speed.display(int(self.state.left_power * 100))
+            self.motor_right_speed.display(int(self.state.right_power * 100))
 
     def toggle_connection(self):
         if self.state.app_state == AppState.ESTOPPED:
@@ -1221,6 +1260,8 @@ class MainWindow(QMainWindow):
         self.connect_button.setText("Connect")
         self.connect_indicator_led.set_color("#f44336")
         self.connect_button.setEnabled(True)
+        self.motor_left_speed.display("----")
+        self.motor_right_speed.display("----")
 
         for label in self.battery_volt_labels:
             label.setText("Unknown")
@@ -1283,6 +1324,8 @@ class MainWindow(QMainWindow):
             self.state_label.setText("Robot Enabled")
         else:
             self.state_label.setText("Robot Disabled")
+            self.motor_left_speed.display(0)
+            self.motor_right_speed.display(0)
 
     def battery_update(self):
         """Update battery states"""

@@ -3,10 +3,9 @@ Unit tests for UI utils
 """
 
 import pytest
+from kevinbot_desktopclient.ui.util import add_tabs, change_url_port, initials, rgb_to_hex, rotate_icon
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QTabWidget
-
-from kevinbot_desktopclient.ui.util import add_tabs, change_url_port, initials, rgb_to_hex, rotate_icon
 
 
 @pytest.mark.usefixtures("qtbot")

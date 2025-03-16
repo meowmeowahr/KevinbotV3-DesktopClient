@@ -14,9 +14,6 @@ from functools import partial
 from typing import Any, override
 
 import ansi2html
-import kevinbotlib
-import kevinbotlib.exceptions
-import kevinbotlib.eyes
 import pyglet
 import qdarktheme as qtd
 import qtawesome as qta
@@ -71,6 +68,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import kevinbotlib
+import kevinbotlib.exceptions
+import kevinbotlib.eyes
 from kevinbot_desktopclient import constants
 from kevinbot_desktopclient.components import (
     ControllerManagerWidget,

@@ -3,10 +3,6 @@ Unit tests for widgets
 """
 
 import pytest
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QResizeEvent
-from PySide6.QtWidgets import QWidget
-
 from kevinbot_desktopclient.ui.widgets import (
     AuthorWidget,
     ColorBlock,
@@ -15,6 +11,9 @@ from kevinbot_desktopclient.ui.widgets import (
     Severity,
     WarningBar,
 )
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QResizeEvent
+from PySide6.QtWidgets import QWidget
 
 
 @pytest.mark.usefixtures("qtbot")
